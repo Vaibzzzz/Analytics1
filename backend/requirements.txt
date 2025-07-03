@@ -5,3 +5,7 @@ python-multipart==0.0.9
 openai>=1.86.0,<2.0.0
 python-dotenv==1.0.1
 aiofiles==23.2.1
+
+sqlalchemy
+psycopg2-binary
+python-dotenv

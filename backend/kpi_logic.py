@@ -1,16 +1,14 @@
 import pandas as pd
 import difflib
 
-# Define KPI requirements with aliases
 KPI_COLUMNS = {
-    "transaction_value": ["transaction value", "usd value", "txn_amt"],
-    "transaction_id": ["reference id", "ext reference id"],
-    "fraud_amount": ["fraud amount$", "fraud", "fraud_flag"],
-    "transaction_date": ["transaction date/ time", "date", "txn_date"],
+    "transaction_value": ["usd_value", "amount", "transaction amount"],
+    "transaction_id": ["i_transaction_id", "internal_transaction_id"],
+    "fraud_flag": ["fraud", "is_fraud"],
+    "transaction_date": ["date_time", "timestamp", "created_at"],
     "city": ["city", "location", "billing_city"],
-    "successful": ["successful", "is_success", "status"],
+    "successful": ["status"],
 }
-
 
 def find_best_column(possible_names, actual_columns):
     for name in possible_names:
@@ -21,7 +19,6 @@ def find_best_column(possible_names, actual_columns):
                     return col
     return None
 
-
 def map_columns(df):
     mapping = {}
     for key, aliases in KPI_COLUMNS.items():
@@ -30,22 +27,20 @@ def map_columns(df):
             mapping[key] = match
     return mapping
 
-
 def compute_all_kpis(df: pd.DataFrame):
     df.columns = [col.strip() for col in df.columns]  # clean column names
     mapping = map_columns(df)
     kpis = {}
 
-    # Safely convert numeric columns
-    for key in ["transaction_value", "fraud_amount"]:
-        col = mapping.get(key)
-        if col and col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    # Numeric Conversion
+    if 'transaction_value' in mapping:
+        df[mapping['transaction_value']] = pd.to_numeric(df[mapping['transaction_value']], errors='coerce')
 
-    # Safely convert date column
-    tx_date = mapping.get("transaction_date")
-    if tx_date:
-        df[tx_date] = pd.to_datetime(df[tx_date], errors='coerce')
+    if 'fraud_flag' in mapping:
+        df[mapping['fraud_flag']] = pd.to_numeric(df[mapping['fraud_flag']], errors='coerce')
+
+    if 'transaction_date' in mapping:
+        df[mapping['transaction_date']] = pd.to_datetime(df[mapping['transaction_date']], errors='coerce')
 
     # 1. Average Transaction Amount
     tx_val = mapping.get("transaction_value")
@@ -58,59 +53,67 @@ def compute_all_kpis(df: pd.DataFrame):
         kpis["transaction_volume"] = df[tx_id].nunique()
 
     # 3. Fraud Rate
-    fraud_col = mapping.get("fraud_amount")
+    fraud_col = mapping.get("fraud_flag")
     if fraud_col:
-        fraud_txns = df[df[fraud_col] > 0]
-        kpis["fraud_rate"] = round(len(fraud_txns) / len(df), 4) if len(df) > 0 else 0.0
+        fraud_rate = df[fraud_col].sum() / len(df) if len(df) else 0.0
+        kpis["fraud_rate"] = round(fraud_rate, 4)
 
-    # 4. Transactions per day
-    if tx_date:
-        df_day = df[df[tx_date].notna()].copy()
-        df_day["day"] = df_day[tx_date].dt.date
-        daily_counts = df_day.groupby("day").size().reset_index(name="count")
-        kpis["transactions_per_day"] = daily_counts.to_dict(orient="list")
+    # 4. Conversion Rate
+    success_col = mapping.get("successful")
+    if success_col:
+        converted = df[success_col].astype(str).str.upper().eq("Y").sum()
+        kpis["conversion_rate"] = round(converted / len(df), 4) if len(df) else 0.0
 
-    # 5. Transactions per month
-    if tx_date:
-        df_month = df[df[tx_date].notna()].copy()
-        df_month["month"] = df_month[tx_date].dt.to_period("M").astype(str)
-        monthly_counts = df_month.groupby("month").size().reset_index(name="count")
-        kpis["transactions_per_month"] = monthly_counts.to_dict(orient="list")
+    # 5. Transactions per day
+    date_col = mapping.get("transaction_date")
+    if date_col:
+        df_day = df[df[date_col].notna()].copy()
+        df_day['day'] = df_day[date_col].dt.date
+        daily = df_day.groupby("day").size().reset_index(name="count")
+        kpis["transactions_per_day"] = {
+            "dates": daily['day'].astype(str).tolist(),
+            "counts": daily['count'].tolist()
+        }
 
-    # 6. Top cities by volume
+    # 6. Transactions per month
+    if date_col:
+        df_month = df[df[date_col].notna()].copy()
+        df_month['month'] = df_month[date_col].dt.to_period("M").astype(str)
+        monthly = df_month.groupby("month").size().reset_index(name="count")
+        kpis["transactions_per_month"] = {
+            "months": monthly['month'].tolist(),
+            "counts": monthly['count'].tolist()
+        }
+
+    # 7. Top Cities by Volume
     city_col = mapping.get("city")
     if city_col:
         top_cities = df[city_col].value_counts().nlargest(10)
-        kpis["top_cities"] = {"labels": top_cities.index.tolist(), "values": top_cities.values.tolist()}
-
-    # 7. Top growing cities (monthly growth)
-    if city_col and tx_date:
-        df_growth = df[df[tx_date].notna()].copy()
-        df_growth["month"] = df_growth[tx_date].dt.to_period("M").astype(str)
-        growth_data = df_growth.groupby([city_col, "month"]).size().reset_index(name="count")
-        pct_change = growth_data.groupby(city_col)["count"].pct_change()
-        mean_growth = pct_change.groupby(growth_data[city_col]).mean().dropna().nlargest(5)
-        kpis["top_growing_cities"] = {
-            "cities": mean_growth.index.tolist(),
-            "growth_rates": mean_growth.values.round(2).tolist()
+        kpis["top_cities"] = {
+            "labels": top_cities.index.tolist(),
+            "values": top_cities.values.tolist()
         }
 
-    # 8. Most risky cities (fraud rate)
+    # 8. Top Growing Cities
+    if city_col and date_col:
+        df_growth = df[df[date_col].notna()].copy()
+        df_growth['month'] = df_growth[date_col].dt.to_period("M").astype(str)
+        growth = df_growth.groupby([city_col, 'month']).size().reset_index(name='count')
+        pct_change = growth.groupby(city_col)['count'].pct_change()
+        avg_growth = pct_change.groupby(growth[city_col]).mean().dropna().nlargest(5)
+        kpis['top_growing_cities'] = {
+            "cities": avg_growth.index.tolist(),
+            "growth_rates": avg_growth.values.round(2).tolist()
+        }
+
+    # 9. Most Risky Cities
     if city_col and fraud_col:
-        df_fraud = df.copy()
-        df_fraud["is_fraud"] = df[fraud_col] > 0
-        fraud_rates = df_fraud.groupby(city_col)["is_fraud"].mean().nlargest(5)
-        kpis["most_risky_cities"] = {
-            "cities": fraud_rates.index.tolist(),
-            "fraud_rates": fraud_rates.values.round(4).tolist()
+        df_risk = df.copy()
+        df_risk['is_fraud'] = df[fraud_col] > 0
+        risk = df_risk.groupby(city_col)['is_fraud'].mean().nlargest(5)
+        kpis['most_risky_cities'] = {
+            "cities": risk.index.tolist(),
+            "fraud_rates": risk.values.round(4).tolist()
         }
-
-    # 9. Conversion Rate
-    success_col = mapping.get("successful")
-    if success_col and success_col in df.columns:
-        converted = df[success_col].astype(str).str.upper().eq("Y").sum()
-        total = len(df)
-        conversion_rate = converted / total if total else 0.0
-        kpis["conversion_rate"] = round(conversion_rate, 4)
 
     return kpis

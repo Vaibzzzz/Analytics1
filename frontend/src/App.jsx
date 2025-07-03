@@ -1,162 +1,74 @@
-import React, { useState } from "react";
-import axios from "axios";
-import ReactECharts from "echarts-for-react";
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Card, CardContent, Grid, Container } from '@mui/material';
+import * as echarts from 'echarts';
+
+const Chart = ({ title, x, y }) => {
+  const chartId = `chart-${title.replace(/\s+/g, '-')}`;
+
+  useEffect(() => {
+    const chartDom = document.getElementById(chartId);
+    if (!chartDom) return;
+
+    const chart = echarts.init(chartDom);
+    const option = {
+      title: { text: title },
+      tooltip: {},
+      xAxis: { data: x },
+      yAxis: {},
+      series: [{ type: 'bar', data: y }],
+    };
+
+    chart.setOption(option);
+    return () => chart.dispose();
+  }, [x, y, title]);
+
+  return <div id={chartId} style={{ width: '100%', height: 400, marginTop: 20 }} />;
+};
 
 function App() {
-  const [kpis, setKpis] = useState(null);
+  const [metrics, setMetrics] = useState([]);
+  const [charts, setCharts] = useState([]);
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await axios.post("http://localhost:8000/upload", formData);
-      if (response.data.success) {
-        setKpis(response.data.kpis);
-      } else {
-        alert("Error: " + response.data.error);
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("Failed to upload file.");
-    }
-  };
-
-  const renderCard = (label, value) => (
-    <div key={label} className="p-4 bg-white rounded shadow text-center w-64">
-      <h3 className="text-gray-600 text-sm">{label}</h3>
-      <p className="text-2xl font-bold">{value}</p>
-    </div>
-  );
-
-  const getBarChartOption = (title, xData = [], yData = []) => ({
-    title: { text: title },
-    tooltip: {},
-    xAxis: { type: "category", data: xData },
-    yAxis: { type: "value" },
-    series: [
-      {
-        data: yData,
-        type: "bar",
-        itemStyle: { color: "#5470C6" },
-      },
-    ],
-  });
-
-  const getLineChartOption = (title, xData = [], yData = []) => ({
-    title: { text: title },
-    tooltip: {},
-    xAxis: { type: "category", data: xData },
-    yAxis: { type: "value" },
-    series: [
-      {
-        data: yData,
-        type: "line",
-        smooth: true,
-        lineStyle: { color: "#91cc75" },
-      },
-    ],
-  });
-
-  const getGaugeOption = (title, value = 0) => ({
-    title: { text: title },
-    series: [
-      {
-        type: "gauge",
-        progress: { show: true },
-        detail: {
-          valueAnimation: true,
-          formatter: "{value}%",
-        },
-        data: [{ value: (parseFloat(value) * 100).toFixed(2), name: title }],
-      },
-    ],
-  });
+  useEffect(() => {
+    fetch('http://localhost:8000/generate_kpis')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch KPIs');
+        return res.json();
+      })
+      .then((data) => {
+        setMetrics(data.metrics || []);
+        setCharts(data.charts || []);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, []);
 
   return (
-    <div className="p-10 space-y-6">
-      <input type="file" accept=".csv" onChange={handleFileUpload} />
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        KPI Dashboard
+      </Typography>
 
-      {kpis && (
-        <div className="flex flex-wrap gap-6">
-          {renderCard("Avg Transaction Amount", `$${kpis.average_transaction_amount ?? "-"}`)}
-          {renderCard("Transaction Volume", kpis.transaction_volume ?? "-")}
-          {renderCard(
-            "Conversion Rate",
-            kpis.conversion_rate !== undefined
-              ? `${(kpis.conversion_rate * 100).toFixed(2)}%`
-              : "-"
-          )}
+      <Grid container spacing={2}>
+        {metrics.map((metric, index) => (
+          <Grid item xs={12} sm={6} md={4} key={index}>
+            <Card sx={{ backgroundColor: '#f4f6f8', borderRadius: 2 }}>
+              <CardContent>
+                <Typography variant="h6">{metric.title}</Typography>
+                <Typography variant="h5" fontWeight="bold">
+                  {metric.value}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
-          <ReactECharts
-            key="fraud_rate"
-            option={getGaugeOption("Fraud Rate", kpis.fraud_rate ?? 0)}
-            style={{ height: 300, width: 300 }}
-          />
-
-          {kpis.transactions_per_day && (
-            <ReactECharts
-              key="per_day"
-              option={getLineChartOption(
-                "Transactions Per Day",
-                kpis.transactions_per_day.day,
-                kpis.transactions_per_day.count
-              )}
-              style={{ height: 300, width: 600 }}
-            />
-          )}
-
-          {kpis.transactions_per_month && (
-            <ReactECharts
-              key="per_month"
-              option={getBarChartOption(
-                "Transactions Per Month",
-                kpis.transactions_per_month.month,
-                kpis.transactions_per_month.count
-              )}
-              style={{ height: 300, width: 600 }}
-            />
-          )}
-
-          {kpis.top_cities && (
-            <ReactECharts
-              key="top_cities"
-              option={getBarChartOption(
-                "Top Cities",
-                kpis.top_cities.labels,
-                kpis.top_cities.values
-              )}
-              style={{ height: 300, width: 600 }}
-            />
-          )}
-
-          {kpis.top_growing_cities && (
-            <ReactECharts
-              key="top_growing"
-              option={getBarChartOption(
-                "Top Growing Cities",
-                kpis.top_growing_cities.cities,
-                kpis.top_growing_cities.growth_rates
-              )}
-              style={{ height: 300, width: 600 }}
-            />
-          )}
-
-          {kpis.most_risky_cities && (
-            <ReactECharts
-              key="risky_cities"
-              option={getBarChartOption(
-                "Most Risky Cities",
-                kpis.most_risky_cities.cities,
-                kpis.most_risky_cities.fraud_rates
-              )}
-              style={{ height: 300, width: 600 }}
-            />
-          )}
-        </div>
-      )}
-    </div>
+      {charts.map((chart, index) => (
+        <Chart key={index} title={chart.title} x={chart.x} y={chart.y} />
+      ))}
+    </Container>
   );
 }
 
