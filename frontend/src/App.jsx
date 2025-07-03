@@ -1,75 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Card, CardContent, Grid, Container } from '@mui/material';
-import * as echarts from 'echarts';
+import React from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 
-const Chart = ({ title, x, y }) => {
-  const chartId = `chart-${title.replace(/\s+/g, '-')}`;
+import Sidebar from './components/Sidebar'
+import Header  from './components/Header'
 
-  useEffect(() => {
-    const chartDom = document.getElementById(chartId);
-    if (!chartDom) return;
+// our page stubs
+import Dashboard         from './pages/Dashboard'
+import FinancialAnalysis from './pages/FinancialAnalysis'
+import RiskAssessment    from './pages/RiskAssessment'
+import Performance       from './pages/Performance'
+import AnalyticsPage     from './pages/Analytics'
+import Reports           from './pages/Reports'
 
-    const chart = echarts.init(chartDom);
-    const option = {
-      title: { text: title },
-      tooltip: {},
-      xAxis: { data: x },
-      yAxis: {},
-      series: [{ type: 'bar', data: y }],
-    };
-
-    chart.setOption(option);
-    return () => chart.dispose();
-  }, [x, y, title]);
-
-  return <div id={chartId} style={{ width: '100%', height: 400, marginTop: 20 }} />;
-};
-
-function App() {
-  const [metrics, setMetrics] = useState([]);
-  const [charts, setCharts] = useState([]);
-
-  useEffect(() => {
-    fetch('http://localhost:8000/generate_kpis')
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch KPIs');
-        return res.json();
-      })
-      .then((data) => {
-        setMetrics(data.metrics || []);
-        setCharts(data.charts || []);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, []);
-
+export default function App() {
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        KPI Dashboard
-      </Typography>
+    <div className="flex h-screen">
+      <Sidebar />
 
-      <Grid container spacing={2}>
-        {metrics.map((metric, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index}>
-            <Card sx={{ backgroundColor: '#f4f6f8', borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="h6">{metric.title}</Typography>
-                <Typography variant="h5" fontWeight="bold">
-                  {metric.value}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      <div className="flex-1 flex flex-col bg-[#0b0d17]">
+        <Header />
 
-      {charts.map((chart, index) => (
-        <Chart key={index} title={chart.title} x={chart.x} y={chart.y} />
-      ))}
-    </Container>
-  );
+        <main className="flex-1 overflow-auto">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard"          element={<Dashboard />} />
+            <Route path="/financial-analysis" element={<FinancialAnalysis />} />
+            <Route path="/risk-assessment"    element={<RiskAssessment />} />
+            <Route path="/performance"        element={<Performance />} />
+            <Route path="/analytics"          element={<AnalyticsPage />} />
+            <Route path="/reports"            element={<Reports />} />
+            <Route path="*" element={<h2 className="p-8 text-white">Page Not Found</h2>} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  )
 }
-
-export default App;
