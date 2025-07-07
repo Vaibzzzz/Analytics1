@@ -8,7 +8,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    axios.get('http://localhost:8001/generate_kpis')
+    axios.get('http://localhost:8001/api/dashboard')
       .then(res => {
         setData(res.data)
         setLoading(false)

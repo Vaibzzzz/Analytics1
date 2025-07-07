@@ -1,12 +1,8 @@
 from fastapi import APIRouter
-from KPI.KPI_Dashboard import get_transaction_performance_data
+from KPI.KPI_Dashboard import get_dashboard_data
 
 router = APIRouter()
 
-@router.get("/generate_kpis")
-def generate_kpis():
-    """
-    Returns pre-defined KPIs and charts for transaction analysis.
-    """
-    result = get_transaction_performance_data()
-    return result
+@router.get("/dashboard", summary="Get all dashboard metrics & charts")
+def dashboard():
+    return get_dashboard_data()

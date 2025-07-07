@@ -1,17 +1,18 @@
+# main.py
+
 from fastapi import FastAPI
-from API import API_Dashboard
+from KPI.KPI_Dashboard import router as dashboard_router
+from KPI.financial_analysis import router as financial_analysis_router
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
-
-# CORS (adjust origins if needed)
+app = FastAPI(title="A360 Prototype Dashboard API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include API routes
-app.include_router(API_Dashboard.router)
+app.include_router(dashboard_router, prefix="/api")
+app.include_router(financial_analysis_router, prefix="/api")
