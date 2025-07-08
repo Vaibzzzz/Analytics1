@@ -1,50 +1,14 @@
-from sqlalchemy import text
-from DB.connector import get_engine
+from fastapi import APIRouter, Query
+from datetime import date
+from KPI.financial_analysis import get_financial_performance_data
 
-engine = get_engine()
+router = APIRouter()
 
-def get_financial_analysis_data() -> dict:
-    """
-    Returns the financial analysis data for the dashboard.
-    """
-    
-    metrics = []
-    charts = []
-
-    with engine.connect() as conn:
-        total_volume = conn.execute(
-            text("SELECT COALESCE(SUM(amount), 0) FROM transaction")
-        ).scalar() or 0.0
-        avg_value = conn.execute(
-            text("SELECT COALESCE(AVG(amount), 0) FROM transaction")
-        ).scalar() or 0.0
-
-        metrics += [
-            {"title": "Total Transaction Volume",  "value": round(float(total_volume), 2)},
-            {"title": "Average Transaction Value", "value": round(float(avg_value), 2)},
-        ]
-
-        distinct_currencies = conn.execute(
-            text("SELECT COUNT(DISTINCT transaction_currency) FROM transaction")
-        ).scalar() or 0
-
-        metrics += [
-            {"title": "Distinct Currencies", "value": distinct_currencies},
-        ]
-
-        # ─── Charts ────────────────────────────────────────────────────────
-        # 1) Revenue by Currency (Pie)
-        rows = conn.execute(
-            text("SELECT transaction_currency AS name, SUM(amount) AS total FROM transaction GROUP BY transaction_currency")
-        ).mappings().all()
-        total = sum(r["total"] for r in rows) or 1
-        charts.append({
-            "title": "Revenue by Currency",
-            "type": "pie",
-            "data": [
-                {"name": r["name"], "value": round(r["total"] / total * 100, 1)}
-                for r in rows
-            ]
-        })
-
-    return { "metrics": metrics, "charts": charts }
+@router.get("/financial-performance")
+def financial_performance(
+    filter_type: str = Query(default="YTD", description="Filter type like Today, Daily, Weekly, MTD, etc."),
+    start: date = Query(default=None),
+    end: date = Query(default=None)
+):
+    custom = (start, end) if start and end else None
+    return get_financial_performance_data(filter_type, custom)

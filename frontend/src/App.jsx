@@ -8,6 +8,7 @@ import Header  from './components/Header'
 import Dashboard         from './pages/Dashboard'
 import FinancialAnalysis from './pages/FinancialAnalysis'
 import RiskAssessment    from './pages/RiskAssessment'
+import OperationalEfficiency from './pages/operational_efficiency'
 import Performance       from './pages/Performance'
 import AnalyticsPage     from './pages/Analytics'
 import Reports           from './pages/Reports'
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/dashboard"          element={<Dashboard />} />
             <Route path="/financial-analysis" element={<FinancialAnalysis />} />
             <Route path="/risk-assessment"    element={<RiskAssessment />} />
+            <Route path="/operational-efficiency" element={<OperationalEfficiency />} />
             <Route path="/performance"        element={<Performance />} />
             <Route path="/analytics"          element={<AnalyticsPage />} />
             <Route path="/reports"            element={<Reports />} />

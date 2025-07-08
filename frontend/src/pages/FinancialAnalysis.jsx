@@ -2,28 +2,31 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import ReactECharts from 'echarts-for-react'
 
+const filterOptions = [
+  'YTD', 'MTD', 'Weekly', 'Daily', 'Monthly', 'Yesterday', 'Today'
+]
+
 export default function FinancialAnalysis() {
-  const [data, setData]       = useState({ metrics: [], charts: [] })
+  const [data, setData] = useState({ metrics: [], charts: [] })
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('YTD')
 
   useEffect(() => {
-    axios.get('http://localhost:8001/api/financial-analysis')
-      .then(res => {
-        setData(res.data)
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('Error fetching financial analysis data:', err)
-      })
-  }, [])
+    fetchData(filter)
+  }, [filter])
 
-  if (loading) {
-    return <div className="text-white p-8">Loading…</div>
+  const fetchData = async (filter_type) => {
+    setLoading(true)
+    try {
+      const res = await axios.get(`http://localhost:8001/api/financial-performance?filter_type=${filter_type}`)
+      setData(res.data)
+    } catch (err) {
+      console.error('Error fetching financial analysis data:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const { metrics, charts } = data
-
-  // Build ECharts option for each chart
   const buildPieOption = (chart) => ({
     title: {
       text: chart.title,
@@ -35,7 +38,6 @@ export default function FinancialAnalysis() {
       formatter: '{b}: {d}%'
     },
     legend: {
-      orient: 'horizontal',
       bottom: 10,
       textStyle: { color: '#fff' },
       data: chart.data.map(d => d.name)
@@ -44,7 +46,6 @@ export default function FinancialAnalysis() {
       name: chart.title,
       type: 'pie',
       radius: ['40%', '70%'],
-      avoidLabelOverlap: false,
       label: {
         show: true,
         position: 'outside',
@@ -62,32 +63,49 @@ export default function FinancialAnalysis() {
     backgroundColor: '#111827'
   })
 
+  if (loading) return <div className="text-white p-8">Loading…</div>
+
   return (
     <div className="p-8 space-y-6">
-      {/* 1) Metrics Row */}
+      {/* Filter dropdown */}
+      <div className="mb-4 flex justify-end">
+        <select
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          className="bg-[#1f2937] text-white border border-gray-600 rounded px-4 py-2"
+        >
+          {filterOptions.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        {metrics.map((m, i) => (
+        {data.metrics.map((m, i) => (
           <div
             key={i}
             className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center"
           >
             <div className="text-gray-400 text-sm mb-2">{m.title}</div>
             <div className="text-white text-3xl font-semibold">{m.value}</div>
+            {m.diff !== undefined && (
+              <div className={`text-sm mt-2 ${m.diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {m.diff >= 0 ? '+' : ''}{m.diff}% vs previous
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* 2) Charts Grid */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {charts.map((c, idx) => (
-          <div key={idx} className="bg-[#111827] p-4 rounded-lg">
-            {c.type === 'pie' && (
-              <ReactECharts
-                option={buildPieOption(c)}
-                style={{ height: '350px', width: '100%' }}
-              />
+        {data.charts.map((chart, i) => (
+          <div key={i} className="bg-[#111827] p-4 rounded-lg">
+            {chart.type === 'pie' && (
+              <ReactECharts option={buildPieOption(chart)} style={{ height: 350 }} />
             )}
-            {/* If you later add bar charts, you can check for c.type==='bar' here */}
+            {/* Future support for bar, line, etc. */}
           </div>
         ))}
       </div>
