@@ -99,27 +99,8 @@ def get_operational_efficiency_data(filter_type: str = "YTD", custom: tuple[date
             "diff": pct_diff(curr_rate, prev_rate)
         })
 
-        # ─── 2. Sales Growth Comparison ───────────────────────
-        sales_sql = "SELECT COALESCE(SUM(amount), 0) FROM transaction WHERE date_time::date BETWEEN :s AND :e"
-        curr_sales = fetch_one(conn, sales_sql, {"s": start, "e": end})
-        prev_sales = fetch_one(conn, sales_sql, {"s": comp_start, "e": comp_end})
 
-        if filter_type == "DAILY":
-            prev_sales /= 7
-        elif filter_type == "WEEKLY":
-            prev_sales /= 4
-
-        growth = pct_diff(curr_sales, prev_sales)
-
-        charts.append({
-            "title": "Sales Growth Comparison",
-            "type": "line",
-            "x": ["Previous", "Current"],
-            "y": [round(prev_sales, 2), round(curr_sales, 2)],
-            "comparison": f"{growth} %"
-        })
-
-        # ─── 3. Processing Partner Efficiency ─────────────────
+        # ─── 2. Processing Partner Efficiency ─────────────────
         rows = conn.execute(text("""
             SELECT 
                 a.name AS acquirer_name,
@@ -146,7 +127,7 @@ def get_operational_efficiency_data(filter_type: str = "YTD", custom: tuple[date
             ]
         })
 
-        # ─── 4. Payment Method Distribution ───────────────────
+        # ─── 3. Payment Method Distribution ───────────────────
         rows = conn.execute(text("""
             SELECT credit_card_type,
                    COUNT(*) FILTER (WHERE funding_source = 'CREDIT') AS credit_count,
