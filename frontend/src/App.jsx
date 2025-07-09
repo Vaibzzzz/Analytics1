@@ -9,6 +9,7 @@ import Dashboard         from './pages/Dashboard'
 import FinancialAnalysis from './pages/FinancialAnalysis'
 import RiskAssessment    from './pages/RiskAssessment'
 import OperationalEfficiency from './pages/operational_efficiency'
+import DemoGraphic      from './pages/DemoGraphic'
 import Performance       from './pages/Performance'
 import AnalyticsPage     from './pages/Analytics'
 import Reports           from './pages/Reports'
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/financial-analysis" element={<FinancialAnalysis />} />
             <Route path="/risk-assessment"    element={<RiskAssessment />} />
             <Route path="/operational-efficiency" element={<OperationalEfficiency />} />
+            <Route path="/demographic"        element={<DemoGraphic />} />
             <Route path="/performance"        element={<Performance />} />
             <Route path="/analytics"          element={<AnalyticsPage />} />
             <Route path="/reports"            element={<Reports />} />

@@ -63,6 +63,40 @@ export default function FinancialAnalysis() {
     backgroundColor: '#111827'
   })
 
+  const buildBarOption = (chart) => ({
+    title: {
+      text: chart.title,
+      left: 'center',
+      textStyle: { color: '#fff' }
+    },
+    tooltip: {
+      trigger: 'axis'
+    },
+    xAxis: {
+      type: 'category',
+      data: chart.x,
+      axisLabel: { color: '#fff' }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#fff' }
+    },
+    series: [{
+      data: chart.y,
+      type: 'bar',
+      itemStyle: {
+        color: '#3b82f6' // Tailwind blue-500
+      }
+    }],
+    grid: {
+      left: '5%',
+      right: '5%',
+      bottom: '10%',
+      containLabel: true
+    },
+    backgroundColor: '#111827'
+  })
+
   if (loading) return <div className="text-white p-8">Loading…</div>
 
   return (
@@ -105,7 +139,9 @@ export default function FinancialAnalysis() {
             {chart.type === 'pie' && (
               <ReactECharts option={buildPieOption(chart)} style={{ height: 350 }} />
             )}
-            {/* Future support for bar, line, etc. */}
+            {chart.type === 'bar' && (
+              <ReactECharts option={buildBarOption(chart)} style={{ height: 350 }} />
+            )}
           </div>
         ))}
       </div>

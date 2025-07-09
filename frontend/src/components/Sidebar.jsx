@@ -5,6 +5,7 @@ const links = [
   { to: '/financial-analysis',label: 'Financial Analysis' },
   { to: '/risk-assessment',   label: 'Risk Assessment' },
   { to: '/operational-efficiency', label: 'Operational Efficiency' },
+  { to: '/DemoGraphic',       label: 'DemoGraphic' },
   { to: '/performance',       label: 'Performance' },
   { to: '/analytics',         label: 'Analytics' },
   { to: '/reports',           label: 'Reports' },
