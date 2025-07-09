@@ -1,31 +1,29 @@
-import React, { useEffect, useState } from 'react'
-import axios from 'axios'
-import ReactECharts from 'echarts-for-react'
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import ReactECharts from 'echarts-for-react';
 
-const filterOptions = [
-  'YTD', 'MTD', 'Weekly', 'Daily', 'Monthly', 'Yesterday', 'Today'
-]
+const filterOptions = ['YTD', 'MTD', 'Weekly', 'Daily', 'Monthly', 'Yesterday', 'Today'];
 
 export default function FinancialAnalysis() {
-  const [data, setData] = useState({ metrics: [], charts: [] })
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('YTD')
+  const [data, setData] = useState({ metrics: [], charts: [] });
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('YTD');
 
   useEffect(() => {
-    fetchData(filter)
-  }, [filter])
+    fetchData(filter);
+  }, [filter]);
 
-  const fetchData = async (filter_type) => {
-    setLoading(true)
+  const fetchData = async (filterType) => {
+    setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:8001/api/financial-performance?filter_type=${filter_type}`)
-      setData(res.data)
+      const res = await axios.get(`http://localhost:8001/api/financial-performance?filter_type=${filterType}`);
+      setData(res.data);
     } catch (err) {
-      console.error('Error fetching financial analysis data:', err)
+      console.error('Error fetching financial analysis data:', err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const buildPieOption = (chart) => ({
     title: {
@@ -42,62 +40,78 @@ export default function FinancialAnalysis() {
       textStyle: { color: '#fff' },
       data: chart.data.map(d => d.name)
     },
-    series: [{
-      name: chart.title,
-      type: 'pie',
-      radius: ['40%', '70%'],
-      label: {
-        show: true,
-        position: 'outside',
-        formatter: '{b}: {d}%'
-      },
-      emphasis: {
-        itemStyle: {
-          shadowBlur: 10,
-          shadowOffsetX: 0,
-          shadowColor: 'rgba(0, 0, 0, 0.5)'
-        }
-      },
-      data: chart.data.map(d => ({ name: d.name, value: d.value }))
-    }],
+    series: [
+      {
+        name: chart.title,
+        type: 'pie',
+        radius: ['40%', '70%'],
+        label: {
+          show: true,
+          position: 'outside',
+          formatter: '{b}: {d}%'
+        },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        },
+        data: chart.data.map(d => ({ name: d.name, value: d.value }))
+      }
+    ],
     backgroundColor: '#111827'
-  })
+  });
 
-  const buildBarOption = (chart) => ({
+  const buildHorizontalBarOption = (chart) => ({
     title: {
       text: chart.title,
       left: 'center',
       textStyle: { color: '#fff' }
     },
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
     },
     xAxis: {
-      type: 'category',
-      data: chart.x,
-      axisLabel: { color: '#fff' }
-    },
-    yAxis: {
       type: 'value',
       axisLabel: { color: '#fff' }
     },
-    series: [{
+    yAxis: {
+      type: 'category',
       data: chart.y,
+      axisLabel: { color: '#fff' }
+    },
+    series: chart.series.map(series => ({
+      name: series.name,
+      data: series.data,
       type: 'bar',
+      barWidth: '60%',
       itemStyle: {
-        color: '#3b82f6' // Tailwind blue-500
+        color: '#3b82f6'
+      },
+      label: {
+        show: true,
+        position: 'right',
+        color: '#fff'
       }
-    }],
+    })),
+    legend: {
+      show: chart.series.length > 1,
+      textStyle: { color: '#fff' }
+    },
     grid: {
-      left: '5%',
+      left: '10%',
       right: '5%',
       bottom: '10%',
       containLabel: true
     },
     backgroundColor: '#111827'
-  })
+  });
 
-  if (loading) return <div className="text-white p-8">Loading…</div>
+  if (loading) return <div className="text-white p-8">Loading…</div>;
 
   return (
     <div className="p-8 space-y-6">
@@ -139,12 +153,12 @@ export default function FinancialAnalysis() {
             {chart.type === 'pie' && (
               <ReactECharts option={buildPieOption(chart)} style={{ height: 350 }} />
             )}
-            {chart.type === 'bar' && (
-              <ReactECharts option={buildBarOption(chart)} style={{ height: 350 }} />
+            {chart.type === 'horizontal_bar' && (
+              <ReactECharts option={buildHorizontalBarOption(chart)} style={{ height: 500 }} />
             )}
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }
