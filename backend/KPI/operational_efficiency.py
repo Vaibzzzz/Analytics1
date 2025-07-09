@@ -1,81 +1,13 @@
-from datetime import date, datetime, timedelta
-from dateutil.relativedelta import relativedelta
+from datetime import date
 from sqlalchemy import text
 from DB.connector import get_engine
+from KPI.utils.time_utils import get_date_ranges, pct_diff, fetch_one
+from typing import Optional
+
 
 engine = get_engine()
 
-
-def get_date_ranges(filter_type: str, custom: tuple[date, date] = None):
-    base = datetime(2023, 12, 30, 23, 56, 0)  # your fixed base date
-    today_date = base.date()
-
-    if filter_type == 'TODAY':
-        start = end = today_date
-        comp_end = today_date - timedelta(days=1)
-        comp_start = comp_end
-
-    elif filter_type == 'YESTERDAY':
-        start = end = today_date - timedelta(days=1)
-        comp_end = start - timedelta(days=1)
-        comp_start = comp_end
-
-    elif filter_type == 'DAILY':
-        end = today_date - timedelta(days=1)
-        start = end
-        comp_end = end - timedelta(days=1)
-        comp_start = comp_end - timedelta(days=6)
-
-    elif filter_type == 'WEEKLY':
-        end = today_date - timedelta(days=1)
-        start = end - timedelta(days=6)
-        comp_end = start - timedelta(days=1)
-        comp_start = comp_end - timedelta(days=27)
-
-    elif filter_type == 'MTD':
-        start = today_date.replace(day=1)
-        end = today_date
-        prev_month_end = start - timedelta(days=1)
-        comp_start = prev_month_end.replace(day=1)
-        comp_end = prev_month_end
-
-    elif filter_type == 'MONTHLY':
-        end = today_date
-        start = (base - relativedelta(months=3) + timedelta(days=1)).date()
-        comp_end = (base - relativedelta(months=3)).date()
-        comp_start = (base - relativedelta(months=6) + timedelta(days=1)).date()
-
-    elif filter_type == 'YTD':
-        start = today_date.replace(month=1, day=1)
-        end = today_date
-        comp_start = start.replace(year=start.year - 1)
-        comp_end = comp_start + (end - start)
-
-
-    elif filter_type == 'custom' and custom:
-        start, end = custom
-        length = end - start
-        comp_end = start - timedelta(days=1)
-        comp_start = comp_end - length
-
-    else:
-        raise ValueError(f"Unsupported filter type: {filter_type}")
-
-    return start, end, comp_start, comp_end
-
-
-
-def fetch_one(conn, query: str, params: dict):
-    return float(conn.execute(text(query), params).scalar() or 0.0)
-
-
-def pct_diff(current: float, previous: float) -> float:
-    if previous:
-        return round((current - previous) / previous * 100, 2)
-    return 0.0
-
-
-def get_operational_efficiency_data(filter_type: str = "YTD", custom: tuple[date, date] = None):
+def get_operational_efficiency_data(filter_type: str = "YTD", custom: Optional[tuple[date, date]] = None):
     start, end, comp_start, comp_end = get_date_ranges(filter_type, custom)
     metrics, charts = [], []
 
