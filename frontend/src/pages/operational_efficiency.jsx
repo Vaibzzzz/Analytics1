@@ -2,28 +2,36 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import ReactECharts from 'echarts-for-react'
 
-const filterOptions = ['YTD','MTD','Weekly','Daily','Monthly','Yesterday','Today']
+const filterOptions = ['YTD', 'MTD', 'Weekly', 'Daily', 'Monthly', 'Yesterday', 'Today', 'custom']
 
 export default function OperationalEfficiency() {
-  const [data, setData]     = useState({ metrics: [], charts: [] })
+  const [data, setData]       = useState({ metrics: [], charts: [] })
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('YTD')
+  const [filter, setFilter]   = useState('YTD')
+  const [start, setStart]     = useState('')
+  const [end, setEnd]         = useState('')
 
   useEffect(() => {
-    fetchData(filter)
-  }, [filter])
+    fetchData()
+  }, [filter, start, end])
 
-  const fetchData = async (filterType) => {
-    setLoading(true);
+  const fetchData = async () => {
+    setLoading(true)
     try {
-      const res = await axios.get(`http://localhost:8001/api/operational-efficiency?filter_type=${filterType}`);
-      setData(res.data);
+      const params = { filter_type: filter }
+      if (filter === 'custom' && start && end) {
+        params.start = start
+        params.end   = end
+      }
+
+      const res = await axios.get('http://localhost:8001/api/operational-efficiency', { params })
+      setData(res.data)
     } catch (err) {
-      console.error('Error fetching operational efficiency data:', err);
+      console.error('Error fetching operational efficiency data:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const buildLineOption = (chart) => ({
     title: {
@@ -108,11 +116,11 @@ export default function OperationalEfficiency() {
     })),
     backgroundColor: '#111827'
   })
-  
+
   const renderChartOption = (chart) => {
-    if (chart.type === 'line')               return buildLineOption(chart)
+    if (chart.type === 'line') return buildLineOption(chart)
     if (chart.type === 'double_bar_dual_axis') return buildDoubleBarDualAxisOption(chart)
-    if (chart.type === 'stacked_bar')         return buildStackedBarOption(chart)
+    if (chart.type === 'stacked_bar') return buildStackedBarOption(chart)
     return {}
   }
 
@@ -120,36 +128,62 @@ export default function OperationalEfficiency() {
 
   return (
     <div className="p-8 space-y-6">
-      {/* 1) Filter dropdown */}
-      <div className="flex justify-start mb-4">
+      {/* Filter Controls */}
+      <div className="flex items-center space-x-4 mb-4">
         <select
           className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded text-sm"
           value={filter}
-          onChange={e => setFilter(e.target.value)}
+          onChange={e => {
+            setFilter(e.target.value)
+            if (e.target.value !== 'custom') {
+              setStart('')
+              setEnd('')
+            }
+          }}
         >
           {filterOptions.map(opt => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
+
+        {filter === 'custom' && (
+          <>
+            <input
+              type="date"
+              value={start}
+              onChange={e => setStart(e.target.value)}
+              className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
+            />
+            <span className="text-white">to</span>
+            <input
+              type="date"
+              value={end}
+              onChange={e => setEnd(e.target.value)}
+              className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
+            />
+          </>
+        )}
       </div>
 
-      {/* 2) Metrics */}
+      {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        {data.metrics.map((m,i) => (
-          <div key={i}
-               className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center">
+        {data.metrics.map((m, i) => (
+          <div
+            key={i}
+            className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center"
+          >
             <div className="text-gray-400 text-sm mb-2">{m.title}</div>
             <div className="text-white text-3xl font-semibold">{m.value}</div>
             {m.diff != null && (
-              <div className={`text-sm mt-2 ${m.diff>=0?'text-green-400':'text-red-400'}`}>
-                {m.diff>=0?'+':''}{m.diff}% vs previous
+              <div className={`text-sm mt-2 ${m.diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {m.diff >= 0 ? '+' : ''}{m.diff}% vs previous
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* 3) Charts */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {data.charts.map((chart, idx) => (
           <div key={idx} className="bg-[#111827] p-4 rounded-lg">

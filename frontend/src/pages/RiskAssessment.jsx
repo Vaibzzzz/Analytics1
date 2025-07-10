@@ -2,23 +2,31 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import ReactECharts from 'echarts-for-react'
 
-const filterOptions = ['YTD','MTD','Weekly','Daily','Monthly','Yesterday','Today']
+const filterOptions = ['YTD', 'MTD', 'Weekly', 'Daily', 'Monthly', 'Yesterday', 'Today', 'custom']
 
 export default function RiskAndFraud() {
-  const [data, setData]     = useState({ metrics: [], charts: [] })
+  const [data, setData]       = useState({ metrics: [], charts: [] })
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('YTD')
+  const [filter, setFilter]   = useState('YTD')
+  const [start, setStart]     = useState('')
+  const [end, setEnd]         = useState('')
 
   useEffect(() => {
-    fetchData(filter)
-  }, [filter])
+    fetchData()
+  }, [filter, start, end])
 
-  const fetchData = async (filterType) => {
+  const fetchData = async () => {
     setLoading(true)
     try {
+      const params = { filter_type: filter }
+      if (filter === 'custom' && start && end) {
+        params.start = start
+        params.end = end
+      }
+
       const res = await axios.get(
         'http://localhost:8001/api/risk-and-fraud',
-        { params: { filter_type: filterType } }
+        { params }
       )
       setData(res.data)
     } catch (err) {
@@ -28,7 +36,7 @@ export default function RiskAndFraud() {
     }
   }
 
-  // ─── Build a simple bar chart option ───────────────────────────────
+  // ─── Build bar chart config ───────────────────────────────
   const buildBarOption = (chart) => ({
     title: {
       text: chart.title,
@@ -49,7 +57,7 @@ export default function RiskAndFraud() {
       data: chart.y,
       type: 'bar',
       barWidth: '50%',
-      itemStyle: { color: '#f97316' } // Tailwind orange-500
+      itemStyle: { color: '#f97316' }
     }],
     backgroundColor: '#111827'
   })
@@ -58,22 +66,46 @@ export default function RiskAndFraud() {
 
   return (
     <div className="p-8 space-y-6">
-      {/* Filter dropdown */}
-      <div className="mb-4 flex justify-end">
+      {/* Filter Dropdown */}
+      <div className="flex items-center space-x-4 mb-4">
         <select
-          className="bg-[#1f2937] text-white border border-gray-600 rounded px-4 py-2"
+          className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded text-sm"
           value={filter}
-          onChange={e => setFilter(e.target.value)}
+          onChange={e => {
+            setFilter(e.target.value)
+            if (e.target.value !== 'custom') {
+              setStart('')
+              setEnd('')
+            }
+          }}
         >
           {filterOptions.map(opt => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
+
+        {filter === 'custom' && (
+          <>
+            <input
+              type="date"
+              value={start}
+              onChange={e => setStart(e.target.value)}
+              className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
+            />
+            <span className="text-white">to</span>
+            <input
+              type="date"
+              value={end}
+              onChange={e => setEnd(e.target.value)}
+              className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
+            />
+          </>
+        )}
       </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        {data.metrics.map((m,i) => (
+        {data.metrics.map((m, i) => (
           <div
             key={i}
             className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center"
@@ -81,8 +113,8 @@ export default function RiskAndFraud() {
             <div className="text-gray-400 text-sm mb-2">{m.title}</div>
             <div className="text-white text-3xl font-semibold">{m.value}</div>
             {m.diff != null && (
-              <div className={`text-sm mt-2 ${m.diff>=0 ? 'text-green-400' : 'text-red-400'}`}>
-                {m.diff>=0 ? '+' : ''}{m.diff}% vs previous
+              <div className={`text-sm mt-2 ${m.diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {m.diff >= 0 ? '+' : ''}{m.diff}% vs previous
               </div>
             )}
           </div>
