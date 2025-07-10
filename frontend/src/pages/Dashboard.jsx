@@ -1,61 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import ReactECharts from 'echarts-for-react';
+import React, { useEffect, useState } from 'react'
+import { NavLink } from 'react-router-dom'
+import axios from 'axios'
+import ReactECharts from 'echarts-for-react'
 
-const FILTER_OPTIONS = [
-  'YTD', 'MTD', 'Weekly', 'Daily', 'Monthly', 'Yesterday', 'Today', 'custom'
-];
-
-export default function Customer_Insight() {
-  const [data, setData]       = useState({ metrics: [], charts: [] });
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState(() => localStorage.getItem('customer_filter') || 'YTD');
-  const [start, setStart]     = useState(() => localStorage.getItem('customer_start') || '');
-  const [end, setEnd]         = useState(() => localStorage.getItem('customer_end') || '');
+export default function Dashboard() {
+  const [data, setData]       = useState(() => {
+    const cached = localStorage.getItem('dashboard_data')
+    return cached ? JSON.parse(cached) : { metrics: [], charts: [] }
+  })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchData();
-  }, [filter, start, end]);
+    axios.get('http://localhost:8001/api/dashboard')
+      .then(res => {
+        setData(res.data)
+        localStorage.setItem('dashboard_data', JSON.stringify(res.data))
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false) // even if it fails, show cached content
+      })
+  }, [])
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const params = { filter_type: filter };
-      if (filter === 'custom' && start && end) {
-        params.start = start;
-        params.end   = end;
-      }
-
-      const res = await axios.get('http://localhost:8001/api/customer-insights', { params });
-      setData(res.data);
-    } catch (err) {
-      console.error('Error fetching customer insights data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFilterChange = (value) => {
-    setFilter(value);
-    localStorage.setItem('customer_filter', value);
-
-    if (value !== 'custom') {
-      setStart('');
-      setEnd('');
-      localStorage.removeItem('customer_start');
-      localStorage.removeItem('customer_end');
-    }
-  };
-
-  const handleStartChange = (value) => {
-    setStart(value);
-    localStorage.setItem('customer_start', value);
-  };
-
-  const handleEndChange = (value) => {
-    setEnd(value);
-    localStorage.setItem('customer_end', value);
-  };
+  const { metrics, charts } = data
 
   const buildPieOption = (chart) => ({
     title: {
@@ -63,21 +31,33 @@ export default function Customer_Insight() {
       left: 'center',
       textStyle: { color: '#fff' }
     },
-    tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+    tooltip: { trigger: 'item', formatter: '{b}: {d}%' },
     legend: {
+      orient: 'horizontal',
       bottom: 10,
       textStyle: { color: '#fff' },
       data: chart.data.map(d => d.name)
     },
     series: [{
-      name: chart.title,
       type: 'pie',
       radius: ['40%', '70%'],
-      label: { formatter: '{b}: {d}%' },
+      avoidLabelOverlap: false,
+      label: {
+        show: true,
+        position: 'outside',
+        formatter: '{b}: {d}%'
+      },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      },
       data: chart.data.map(d => ({ name: d.name, value: d.value }))
     }],
     backgroundColor: '#111827'
-  });
+  })
 
   const buildBarOption = (chart) => ({
     title: {
@@ -85,94 +65,117 @@ export default function Customer_Insight() {
       left: 'center',
       textStyle: { color: '#fff' }
     },
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: {},
     xAxis: {
       type: 'category',
       data: chart.x,
-      axisLabel: { color: '#fff', rotate: 20 }
+      axisLabel: { color: '#bbb', rotate: 20 }
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: '#fff' }
+      axisLabel: { color: '#bbb' }
     },
     series: [{
       data: chart.y,
       type: 'bar',
-      barWidth: '50%',
-      itemStyle: { color: '#3B82F6' },
-      label: { show: true, position: 'top', color: '#fff' }
+      itemStyle: { color: '#00aaff' },
+      barWidth: '50%'
     }],
     backgroundColor: '#111827'
-  });
+  })
 
-  if (loading) {
-    return <div className="text-white p-8">Loading…</div>;
+  if (loading && !data.metrics.length) {
+    return <div className="text-white p-8">Loading…</div>
   }
 
   return (
     <div className="p-8 space-y-6">
-      {/* Filter controls */}
-      <div className="flex items-center space-x-4">
-        <select
-          value={filter}
-          onChange={e => handleFilterChange(e.target.value)}
-          className="bg-[#1f2937] text-white border border-gray-600 rounded px-3 py-2"
-        >
-          {FILTER_OPTIONS.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-
-        {filter === 'custom' && (
-          <>
-            <input
-              type="date"
-              value={start}
-              onChange={e => handleStartChange(e.target.value)}
-              className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
-            />
-            <span className="text-white">to</span>
-            <input
-              type="date"
-              value={end}
-              onChange={e => handleEndChange(e.target.value)}
-              className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
-            />
-          </>
-        )}
-      </div>
-
-      {/* Metric Cards */}
+      {/* 1) Unified Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        {data.metrics.map((m, i) => (
-          <div
-            key={i}
-            className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center"
-          >
+        {metrics.map((m,i) => (
+          <div key={i} className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center">
             <div className="text-gray-400 text-sm mb-2">{m.title}</div>
             <div className="text-white text-3xl font-semibold">{m.value}</div>
-            {m.diff !== undefined && (
-              <div className={`text-sm mt-2 ${m.diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {m.diff >= 0 ? '+' : ''}{m.diff}% vs previous
-              </div>
-            )}
           </div>
         ))}
       </div>
 
-      {/* Charts */}
+      {/* 2) Big Link-Cards to Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <NavLink
+          to="/financial-analysis"
+          className="border border-green-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-green-50/10 transition"
+        >
+          <span className="text-green-500 text-2xl">💰</span>
+          <div>
+            <div className="font-semibold">Financial Analysis</div>
+            <div className="text-gray-400 text-sm">Revenue & Currency Insights</div>
+          </div>
+        </NavLink>
+
+        <NavLink
+          to="/risk-assessment"
+          className="border border-red-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-red-50/10 transition"
+        >
+          <span className="text-red-500 text-2xl">⚠️</span>
+          <div>
+            <div className="font-semibold">Risk Assessment</div>
+            <div className="text-gray-400 text-sm">Fraud Detection & Prevention</div>
+          </div>
+        </NavLink>
+
+        <NavLink
+          to="/operational-efficiency"
+          className="border border-blue-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-blue-50/10 transition"
+        >
+          <span className="text-blue-500 text-2xl">📈</span>
+          <div>
+            <div className="font-semibold">Operational Efficiency</div>
+            <div className="text-gray-400 text-sm">Real-time Operational Metrics</div>
+          </div>
+        </NavLink>
+      </div>
+
+      {/* 3) Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {data.charts.map((chart, idx) => (
+        {charts.map((c, idx) => (
           <div key={idx} className="bg-[#111827] p-4 rounded-lg">
-            {chart.type === 'pie' && (
-              <ReactECharts option={buildPieOption(chart)} style={{ height: 350 }} />
+            {c.type === 'pie' && (
+              <ReactECharts
+                option={buildPieOption(c)}
+                style={{ height: '350px', width: '100%' }}
+              />
             )}
-            {chart.type === 'bar' && (
-              <ReactECharts option={buildBarOption(chart)} style={{ height: 350 }} />
+
+            {c.type === 'bar' && (
+              <ReactECharts
+                option={buildBarOption(c)}
+                style={{ height: '350px', width: '100%' }}
+              />
+            )}
+
+            {c.type === 'list' && (
+              <ul className="space-y-2 max-h-56 overflow-auto mt-2">
+                {c.data.map((item,i) =>
+                  typeof item === 'string' ? (
+                    <li key={i} className="text-gray-200">{item}</li>
+                  ) : (
+                    <li key={i} className="flex justify-between items-center text-gray-200">
+                      <span className="bg-[#00aaff] text-[#001f3f] px-2 py-1 rounded text-xs mr-2">
+                        {item.type}
+                      </span>
+                      <span className="flex-1">{item.message}</span>
+                      <span className="text-gray-500 text-xs ml-2">
+                        {new Date(item.time).toLocaleTimeString()}
+                      </span>
+                    </li>
+                  )
+                )}
+              </ul>
             )}
           </div>
         ))}
       </div>
     </div>
-  );
+  )
 }
