@@ -26,9 +26,9 @@ def get_risk_and_fraud_data(filter_type: str = 'YTD',
         # ─── 1) Fraud Loss ──────────────────────────────────────────────
         sql_loss = """
           SELECT COALESCE(SUM(usd_value),0)
-            FROM transaction
+            FROM live_transactions
            WHERE fraud = true
-             AND date_time::date BETWEEN :s AND :e
+             AND created_at::date BETWEEN :s AND :e
         """
         curr_loss = fetch_one(conn, sql_loss, {'s': start, 'e': end})
         prev_loss = fetch_one(conn, sql_loss, {'s': comp_start, 'e': comp_end})
@@ -39,12 +39,12 @@ def get_risk_and_fraud_data(filter_type: str = 'YTD',
         })
 
         # ─── 2) Fraud Rate (%) ─────────────────────────────────────────
-        sql_total = "SELECT COUNT(*)::float FROM transaction WHERE date_time::date BETWEEN :s AND :e"
+        sql_total = "SELECT COUNT(*)::float FROM live_transactions WHERE created_at::date BETWEEN :s AND :e"
         sql_fraud = """
           SELECT COUNT(*)::float
-            FROM transaction
+            FROM live_transactions
            WHERE fraud = true
-             AND date_time::date BETWEEN :s AND :e
+             AND created_at::date BETWEEN :s AND :e
         """
         curr_total = fetch_one(conn, sql_total, {'s': start, 'e': end}) or 1
         prev_total = fetch_one(conn, sql_total, {'s': comp_start, 'e': comp_end}) or 1
@@ -61,9 +61,9 @@ def get_risk_and_fraud_data(filter_type: str = 'YTD',
         # ─── 3) Fraud Detection Rate & Count ───────────────────────────
         sql_detect = """
           SELECT COUNT(*)::float
-            FROM transaction
+            FROM live_transactions
            WHERE pred_fraud = true
-             AND date_time::date BETWEEN :s AND :e
+             AND created_at::date BETWEEN :s AND :e
         """
         curr_detect = fetch_one(conn, sql_detect, {'s': start, 'e': end})
         prev_detect = fetch_one(conn, sql_detect, {'s': comp_start, 'e': comp_end})
@@ -96,10 +96,10 @@ def get_risk_and_fraud_data(filter_type: str = 'YTD',
         # ─── 5) 3DS Authentication Effectiveness (Metric) ─────────────
         rows_3ds = conn.execute(text("""
           SELECT
-            COUNT(*) FILTER (WHERE fraud = true AND sca_type = '3DS_2.0')::float AS fraud_3ds,
-            COUNT(*) FILTER (WHERE sca_type = '3DS_2.0')::float               AS total_3ds
-          FROM transaction
-         WHERE date_time::date BETWEEN :s AND :e
+            COUNT(*) FILTER (WHERE fraud = true AND sca_type = 'THREEDS_2_0')::float AS fraud_3ds,
+            COUNT(*) FILTER (WHERE sca_type = 'THREEDS_2_0')::float               AS total_3ds
+          FROM live_transactions
+         WHERE created_at::date BETWEEN :s AND :e
         """), {'s': start, 'e': end}).mappings().all()
         fraud_3ds = rows_3ds[0]['fraud_3ds']
         total_3ds = rows_3ds[0]['total_3ds'] or 1
@@ -107,10 +107,10 @@ def get_risk_and_fraud_data(filter_type: str = 'YTD',
         # comparison window
         prev_3ds_rows = conn.execute(text("""
           SELECT
-            COUNT(*) FILTER (WHERE fraud = true AND sca_type = '3DS_2.0')::float AS fraud_3ds,
-            COUNT(*) FILTER (WHERE sca_type = '3DS_2.0')::float               AS total_3ds
-          FROM transaction
-         WHERE date_time::date BETWEEN :s AND :e
+            COUNT(*) FILTER (WHERE fraud = true AND sca_type = 'THREEDS_2_0')::float AS fraud_3ds,
+            COUNT(*) FILTER (WHERE sca_type = 'THREEDS_2_0')::float               AS total_3ds
+          FROM live_transactions
+         WHERE created_at::date BETWEEN :s AND :e
         """), {'s': comp_start, 'e': comp_end}).mappings().all()
         prev_fraud_3ds = prev_3ds_rows[0]['fraud_3ds']
         prev_total_3ds = prev_3ds_rows[0]['total_3ds'] or 1
@@ -128,8 +128,8 @@ def get_risk_and_fraud_data(filter_type: str = 'YTD',
               t.region,
               COUNT(*) FILTER (WHERE t.fraud = true)::float AS fraud_count,
               COUNT(*)::float                             AS total_count
-            FROM transaction t
-            WHERE t.date_time::date BETWEEN :s AND :e
+            FROM live_transactions t
+            WHERE t.created_at::date BETWEEN :s AND :e
             GROUP BY t.region
         """), {'s': start, 'e': end}).mappings().all()
 
