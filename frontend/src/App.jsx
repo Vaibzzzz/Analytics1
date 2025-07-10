@@ -23,7 +23,7 @@ export default function App() {
     // refresh every 5 minutes (300,000 ms)
     const id = setInterval(() => {
       setRefreshKey(k => k + 1)
-    }, 5 * 60 * 1000)
+    }, 3 * 60 * 1000)
 
     return () => clearInterval(id)
   }, [])

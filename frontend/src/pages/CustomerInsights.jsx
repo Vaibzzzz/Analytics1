@@ -9,9 +9,9 @@ const FILTER_OPTIONS = [
 export default function Customer_Insight() {
   const [data, setData]       = useState({ metrics: [], charts: [] });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState('YTD');
-  const [start, setStart]     = useState('');
-  const [end, setEnd]         = useState('');
+  const [filter, setFilter]   = useState(() => localStorage.getItem('customer_filter') || 'YTD');
+  const [start, setStart]     = useState(() => localStorage.getItem('customer_start') || '');
+  const [end, setEnd]         = useState(() => localStorage.getItem('customer_end') || '');
 
   useEffect(() => {
     fetchData();
@@ -20,23 +20,41 @@ export default function Customer_Insight() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // build query params
       const params = { filter_type: filter };
       if (filter === 'custom' && start && end) {
         params.start = start;
         params.end   = end;
       }
 
-      const res = await axios.get(
-        'http://localhost:8001/api/customer-insights',
-        { params }
-      );
+      const res = await axios.get('http://localhost:8001/api/customer-insights', { params });
       setData(res.data);
     } catch (err) {
       console.error('Error fetching customer insights data:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterChange = (value) => {
+    setFilter(value);
+    localStorage.setItem('customer_filter', value);
+
+    if (value !== 'custom') {
+      setStart('');
+      setEnd('');
+      localStorage.removeItem('customer_start');
+      localStorage.removeItem('customer_end');
+    }
+  };
+
+  const handleStartChange = (value) => {
+    setStart(value);
+    localStorage.setItem('customer_start', value);
+  };
+
+  const handleEndChange = (value) => {
+    setEnd(value);
+    localStorage.setItem('customer_end', value);
   };
 
   const buildPieOption = (chart) => ({
@@ -97,14 +115,7 @@ export default function Customer_Insight() {
       <div className="flex items-center space-x-4">
         <select
           value={filter}
-          onChange={e => {
-            setFilter(e.target.value);
-            // reset custom dates when switching
-            if (e.target.value !== 'custom') {
-              setStart('');
-              setEnd('');
-            }
-          }}
+          onChange={e => handleFilterChange(e.target.value)}
           className="bg-[#1f2937] text-white border border-gray-600 rounded px-3 py-2"
         >
           {FILTER_OPTIONS.map(opt => (
@@ -117,21 +128,21 @@ export default function Customer_Insight() {
             <input
               type="date"
               value={start}
-              onChange={e => setStart(e.target.value)}
+              onChange={e => handleStartChange(e.target.value)}
               className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
             />
             <span className="text-white">to</span>
             <input
               type="date"
               value={end}
-              onChange={e => setEnd(e.target.value)}
+              onChange={e => handleEndChange(e.target.value)}
               className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
             />
           </>
         )}
       </div>
 
-      {/* Metric */}
+      {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
         {data.metrics.map((m, i) => (
           <div
@@ -148,6 +159,7 @@ export default function Customer_Insight() {
           </div>
         ))}
       </div>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {data.charts.map((chart, idx) => (

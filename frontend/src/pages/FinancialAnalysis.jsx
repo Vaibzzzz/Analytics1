@@ -7,11 +7,11 @@ const FILTER_OPTIONS = [
 ];
 
 export default function FinancialAnalysis() {
-  const [data, setData]       = useState({ metrics: [], charts: [] });
+  const [data, setData] = useState({ metrics: [], charts: [] });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState('YTD');
-  const [start, setStart]     = useState('');
-  const [end, setEnd]         = useState('');
+  const [filter, setFilter] = useState(() => localStorage.getItem('financial_filter') || 'YTD');
+  const [start, setStart] = useState(() => localStorage.getItem('financial_start') || '');
+  const [end, setEnd] = useState(() => localStorage.getItem('financial_end') || '');
 
   useEffect(() => {
     fetchData();
@@ -23,7 +23,7 @@ export default function FinancialAnalysis() {
       const params = { filter_type: filter };
       if (filter === 'custom' && start && end) {
         params.start = start;
-        params.end   = end;
+        params.end = end;
       }
 
       const res = await axios.get('http://localhost:8001/api/financial-performance', { params });
@@ -33,6 +33,28 @@ export default function FinancialAnalysis() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterChange = (value) => {
+    setFilter(value);
+    localStorage.setItem('financial_filter', value);
+
+    if (value !== 'custom') {
+      setStart('');
+      setEnd('');
+      localStorage.removeItem('financial_start');
+      localStorage.removeItem('financial_end');
+    }
+  };
+
+  const handleStartChange = (value) => {
+    setStart(value);
+    localStorage.setItem('financial_start', value);
+  };
+
+  const handleEndChange = (value) => {
+    setEnd(value);
+    localStorage.setItem('financial_end', value);
   };
 
   const buildPieOption = (chart) => ({
@@ -50,26 +72,24 @@ export default function FinancialAnalysis() {
       textStyle: { color: '#fff' },
       data: chart.data.map(d => d.name)
     },
-    series: [
-      {
-        name: chart.title,
-        type: 'pie',
-        radius: ['40%', '70%'],
-        label: {
-          show: true,
-          position: 'outside',
-          formatter: '{b}: {d}%'
-        },
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
-          }
-        },
-        data: chart.data.map(d => ({ name: d.name, value: d.value }))
-      }
-    ],
+    series: [{
+      name: chart.title,
+      type: 'pie',
+      radius: ['40%', '70%'],
+      label: {
+        show: true,
+        position: 'outside',
+        formatter: '{b}: {d}%'
+      },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      },
+      data: chart.data.map(d => ({ name: d.name, value: d.value }))
+    }],
     backgroundColor: '#111827'
   });
 
@@ -81,9 +101,7 @@ export default function FinancialAnalysis() {
     },
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
+      axisPointer: { type: 'shadow' }
     },
     xAxis: {
       type: 'value',
@@ -99,9 +117,7 @@ export default function FinancialAnalysis() {
       data: series.data,
       type: 'bar',
       barWidth: '60%',
-      itemStyle: {
-        color: '#3b82f6'
-      },
+      itemStyle: { color: '#3b82f6' },
       label: {
         show: true,
         position: 'right',
@@ -129,13 +145,7 @@ export default function FinancialAnalysis() {
       <div className="mb-4 flex items-center space-x-4">
         <select
           value={filter}
-          onChange={e => {
-            setFilter(e.target.value);
-            if (e.target.value !== 'custom') {
-              setStart('');
-              setEnd('');
-            }
-          }}
+          onChange={(e) => handleFilterChange(e.target.value)}
           className="bg-[#1f2937] text-white border border-gray-600 rounded px-4 py-2"
         >
           {FILTER_OPTIONS.map(opt => (
@@ -148,14 +158,14 @@ export default function FinancialAnalysis() {
             <input
               type="date"
               value={start}
-              onChange={e => setStart(e.target.value)}
+              onChange={e => handleStartChange(e.target.value)}
               className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
             />
             <span className="text-white">to</span>
             <input
               type="date"
               value={end}
-              onChange={e => setEnd(e.target.value)}
+              onChange={e => handleEndChange(e.target.value)}
               className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1"
             />
           </>
