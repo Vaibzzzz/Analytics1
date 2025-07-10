@@ -121,12 +121,12 @@ export default function Dashboard() {
         </NavLink>
 
         <NavLink
-          to="/performance"
+          to="/operational-efficiency"
           className="border border-blue-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-blue-50/10 transition"
         >
           <span className="text-blue-500 text-2xl">📈</span>
           <div>
-            <div className="font-semibold">Performance Monitoring</div>
+            <div className="font-semibold">Operational Efficiency</div>
             <div className="text-gray-400 text-sm">Real-time Operational Metrics</div>
           </div>
         </NavLink>

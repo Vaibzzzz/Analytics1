@@ -10,8 +10,7 @@ import FinancialAnalysis from './pages/FinancialAnalysis'
 import RiskAssessment    from './pages/RiskAssessment'
 import OperationalEfficiency from './pages/operational_efficiency'
 import DemoGraphic      from './pages/DemoGraphic'
-import Performance       from './pages/Performance'
-import AnalyticsPage     from './pages/Analytics'
+import Customer_Insight       from './pages/CustomerInsights'
 import Reports           from './pages/Reports'
 
 export default function App() {
@@ -30,8 +29,7 @@ export default function App() {
             <Route path="/risk-assessment"    element={<RiskAssessment />} />
             <Route path="/operational-efficiency" element={<OperationalEfficiency />} />
             <Route path="/demographic"        element={<DemoGraphic />} />
-            <Route path="/performance"        element={<Performance />} />
-            <Route path="/analytics"          element={<AnalyticsPage />} />
+            <Route path="/Customer-Insights"        element={<Customer_Insight />} />
             <Route path="/reports"            element={<Reports />} />
             <Route path="*" element={<h2 className="p-8 text-white">Page Not Found</h2>} />
           </Routes>

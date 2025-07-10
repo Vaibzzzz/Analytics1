@@ -6,8 +6,7 @@ const links = [
   { to: '/risk-assessment',   label: 'Risk Assessment' },
   { to: '/operational-efficiency', label: 'Operational Efficiency' },
   { to: '/DemoGraphic',       label: 'DemoGraphic' },
-  { to: '/performance',       label: 'Performance' },
-  { to: '/analytics',         label: 'Analytics' },
+  { to: '/Customer-Insights',       label: 'Customer Insights' },
   { to: '/reports',           label: 'Reports' },
 ]
 

@@ -1,20 +1,37 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import axios from 'axios'
 import ReactECharts from 'echarts-for-react'
+import * as echarts from 'echarts'
+import usaJson from 'C:/Users/aquib/OneDrive/Desktop/tutorials/Analytic 360/Analytics1/frontend/src/usa.json'
+
+const filterOptions = [
+  'YTD', 'MTD', 'Monthly', 'Weekly', 'Daily', 'Yesterday', 'Today', 'custom'
+]
 
 export default function Demographic() {
-  const [metrics, setMetrics] = useState([])
-  const [charts, setCharts] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [metrics, setMetrics]         = useState([])
+  const [charts, setCharts]           = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [filter, setFilter]           = useState('YTD')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd]     = useState('')
 
   useEffect(() => {
     fetchDemographicData()
-  }, [])
+  }, [filter, customStart, customEnd])
 
   const fetchDemographicData = async () => {
     setLoading(true)
     try {
-      const res = await axios.get('http://localhost:8001/api/demographic')
+      const params = { filter_type: filter }
+      if (filter === 'custom' && customStart && customEnd) {
+        params.start = customStart
+        params.end   = customEnd
+      }
+      const res = await axios.get(
+        'http://localhost:8001/api/demographic',
+        { params }
+      )
       setMetrics(res.data.metrics || [])
       setCharts(res.data.charts || [])
     } catch (err) {
@@ -24,6 +41,45 @@ export default function Demographic() {
     }
   }
 
+  // ─── Bar chart for simple category/value ─────────────────────────
+  const buildBarOption = (chart) => ({
+    title: {
+      text: chart.title,
+      left: 'center',
+      textStyle: { color: '#fff' }
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
+    },
+    xAxis: {
+      type: 'category',
+      data: chart.x,
+      axisLabel: { color: '#fff' },
+      axisLine: { lineStyle: { color: '#888' } }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#fff' },
+      axisLine: { lineStyle: { color: '#888' } }
+    },
+    series: [{
+      data: chart.y,
+      type: 'bar',
+      itemStyle: {
+        color: '#3B82F6',
+        borderRadius: [5,5,0,0]
+      },
+      label: {
+        show: true,
+        position: 'top',
+        color: '#fff'
+      }
+    }],
+    backgroundColor: '#111827'
+  })
+
+  // ─── Horizontal bar for series (e.g. multi-series) ────────────
   const buildHorizontalBarOption = (chart) => ({
     title: {
       text: chart.title,
@@ -32,10 +88,7 @@ export default function Demographic() {
     },
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: {
-      left: 100,
-      right: 30,
-      top: 60,
-      bottom: 40
+      left: 100, right: 30, top: 60, bottom: 40
     },
     xAxis: {
       type: 'value',
@@ -48,12 +101,12 @@ export default function Demographic() {
       axisLine: { lineStyle: { color: '#888' } },
       axisLabel: { color: '#fff' }
     },
-    series: chart.series.map((s) => ({
+    series: chart.series.map(s => ({
       name: s.name,
       type: 'bar',
       data: s.data,
       itemStyle: {
-        borderRadius: [0, 5, 5, 0],
+        borderRadius: [0,5,5,0],
         color: '#3B82F6'
       },
       label: {
@@ -65,16 +118,79 @@ export default function Demographic() {
     backgroundColor: '#111827'
   })
 
-  if (loading) return <div className="text-white p-8">Loading...</div>
+  // ─── Pie chart for distribution ─────────────────────────────────
+  const buildPieOption = (chart) => ({
+    title: {
+      text: chart.title,
+      left: 'center',
+      textStyle: { color: '#fff' }
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {d}%'
+    },
+    legend: {
+      bottom: 10,
+      textStyle: { color: '#fff' },
+      data: chart.data.map(d => d.name)
+    },
+    series: [{
+      name: chart.title,
+      type: 'pie',
+      radius: ['40%','70%'],
+      label: { show: true, formatter: '{b}: {d}%' },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0,0,0,0.5)'
+        }
+      },
+      data: chart.data
+    }],
+    backgroundColor: '#111827'
+  })
+
+  if (loading) return <div className="text-white p-8">Loading…</div>
 
   return (
     <div className="p-8 space-y-6">
-      {/* Metrics */}
+      {/* 1) Time Filter Controls */}
+      <div className="flex items-center space-x-4 mb-4">
+        <select
+          className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+        >
+          {filterOptions.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+        {filter === 'custom' && (
+          <>
+            <input
+              type="date"
+              className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded"
+              value={customStart}
+              onChange={e => setCustomStart(e.target.value)}
+            />
+            <span className="text-white">to</span>
+            <input
+              type="date"
+              className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded"
+              value={customEnd}
+              onChange={e => setCustomEnd(e.target.value)}
+            />
+          </>
+        )}
+      </div>
+
+      {/* 2) Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        {metrics.map((m, i) => (
+        {metrics.map((m,i) => (
           <div
             key={i}
-            className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center"
+            className="bg-[#111827] p-6 rounded-lg flex flex-col justify-center"
           >
             <div className="text-gray-400 text-sm mb-2">{m.title}</div>
             <div className="text-white text-3xl font-semibold">{m.value}</div>
@@ -82,16 +198,110 @@ export default function Demographic() {
         ))}
       </div>
 
-      {/* Charts */}
+      {/* 3) Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {charts.map((chart, i) => (
+        {charts.map((chart,i) => (
           <div key={i} className="bg-[#111827] p-4 rounded-lg">
-            {chart.type === 'horizontal_bar' && (
-              <ReactECharts option={buildHorizontalBarOption(chart)} style={{ height: 500 }} />
+            {chart.type === 'bar' && (
+              <ReactECharts option={buildBarOption(chart)} style={{ height: 400 }} />
+            )}
+            {chart.type === 'pie' && (
+              <ReactECharts option={buildPieOption(chart)} style={{ height: 400 }} />
+            )}
+            {chart.type === 'horizontal_bar' && chart.title !== 'Transactions by State or Province' && (
+              <ReactECharts option={buildHorizontalBarOption(chart)} style={{ height: 400 }} />
+            )}
+            {chart.type === 'horizontal_bar' && chart.title === 'Transactions by State or Province' && (
+              <MapToggleChart
+                title={chart.title}
+                data={chart.series[0].data.map((val, idx) => ({
+                  name: chart.y[idx],
+                  value: val
+                }))}
+              />
             )}
           </div>
         ))}
       </div>
     </div>
   )
+}
+
+// ────────────────────────────────────────────────────────────────
+// Inline Map + Bar Toggle for "Transactions by State or Province"
+function MapToggleChart({ title, data }) {
+  const chartRef = useRef(null)
+  const [option, setOption] = useState({})
+  const [showMap, setShowMap] = useState(true)
+
+  useEffect(() => {
+    echarts.registerMap('USA', usaJson, {
+      Alaska: { left: -131, top: 25, width: 15 },
+      Hawaii: { left: -110, top: 28, width: 5 },
+      'Puerto Rico': { left: -76, top: 26, width: 2 }
+    })
+
+    const formatted = data.map(d => ({ name: stateNameMap[d.name] || d.name, value: d.value }))
+
+    const mapOption = {
+      title: { text: title, left: 'center', textStyle: { color: '#fff' } },
+      backgroundColor: '#111827',
+      visualMap: {
+        left: 'right',
+        min: 0,
+        max: Math.max(...formatted.map(d => d.value)),
+        inRange: { color: ['#e0f3f8','#74add1','#4575b4'] },
+        text: ['High','Low'],
+        calculable: true,
+        textStyle: { color: '#fff' }
+      },
+      series: [{
+        id: 'state-data',
+        type: 'map',
+        roam: true,
+        map: 'USA',
+        universalTransition: true,
+        data: formatted
+      }]
+    }
+
+    const barOption = {
+      title: { text: title, left: 'center', textStyle: { color: '#fff' } },
+      backgroundColor: '#111827',
+      xAxis: { type: 'value', axisLabel: { color: '#fff' } },
+      yAxis: {
+        type: 'category',
+        data: formatted.map(d => d.name),
+        axisLabel: { rotate: 30, color: '#fff' }
+      },
+      animationDurationUpdate: 1000,
+      series: [{
+        id: 'state-data',
+        type: 'bar',
+        data: formatted.map(d => d.value),
+        universalTransition: true,
+        itemStyle: { color: '#3b82f6' }
+      }]
+    }
+
+    setOption(showMap ? mapOption : barOption)
+
+    const iv = setInterval(() => {
+      setShowMap(prev => !prev)
+      setOption(prev => (prev === mapOption ? barOption : mapOption))
+    }, 10000)
+
+    return () => clearInterval(iv)
+  }, [data])
+
+  return <ReactECharts ref={chartRef} option={option} style={{ height: '600px' }} />
+}
+
+// Optional state abbreviation → full name map
+const stateNameMap = {
+  NJ:'New Jersey', NH:'New Hampshire', WI:'Wisconsin', FL:'Florida',
+  OK:'Oklahoma', UT:'Utah', IA:'Iowa', IL:'Illinois', ND:'North Dakota',
+  MP:'Northern Mariana Islands', MH:'Marshall Islands', HI:'Hawaii',
+  PW:'Palau', VI:'Virgin Islands', CT:'Connecticut', AZ:'Arizona',
+  GA:'Georgia', NE:'Nebraska', MO:'Missouri', NV:'Nevada'
 }

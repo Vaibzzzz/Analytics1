@@ -10,8 +10,7 @@ def get_date_ranges(filter_type: str, custom: Optional[tuple[date, date]]) -> tu
     returns (start, end, comp_start, comp_end) date windows
     for current vs. comparison periods.
     """
-    # Use a fixed “now” for testing/demo; replace with datetime.now() in prod
-    base = datetime(2023, 12, 30, 23, 56, 0)
+    base = datetime.now()
     today_date = base.date()
 
     if filter_type == 'Today':
