@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import axios from 'axios'
 import ReactECharts from 'echarts-for-react'
 import * as echarts from 'echarts'
-import usaJson from 'C:/Users/aquib/OneDrive/Desktop/tutorials/Analytic 360/Analytics1/frontend/src/usa.json'
+import usaJson from '../usa.json' 
 
 const filterOptions = [
   'YTD', 'MTD', 'Monthly', 'Weekly', 'Daily', 'Yesterday', 'Today', 'custom'

@@ -14,7 +14,7 @@ export default function Header() {
       </h2>
       <div className="flex items-center space-x-4">
         <span className="bg-green-400 text-[#001f3f] px-2 py-1 rounded text-sm">
-          Live Data
+          Time
         </span>
         <span className="text-gray-400 font-mono">
           {now.toLocaleTimeString()}
