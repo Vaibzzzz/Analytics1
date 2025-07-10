@@ -29,7 +29,7 @@ export default function App() {
             <Route path="/risk-assessment"    element={<RiskAssessment />} />
             <Route path="/operational-efficiency" element={<OperationalEfficiency />} />
             <Route path="/demographic"        element={<DemoGraphic />} />
-            <Route path="/Customer-Insights"        element={<Customer_Insight />} />
+            <Route path="/CustomerInsights"        element={<Customer_Insight />} />
             <Route path="/reports"            element={<Reports />} />
             <Route path="*" element={<h2 className="p-8 text-white">Page Not Found</h2>} />
           </Routes>
