@@ -180,7 +180,15 @@ export default function FinancialAnalysis() {
             className="bg-[#111827] p-6 rounded-lg min-h-[140px] flex flex-col justify-center"
           >
             <div className="text-gray-400 text-sm mb-2">{m.title}</div>
-            <div className="text-white text-3xl font-semibold">{m.value}</div>
+            <div className="text-white text-3xl font-semibold">
+              {typeof m.value === 'number'
+      ? (
+          ['Total Transaction Volume', 'Average Transaction Value'].includes(m.title)
+            ? `$${new Intl.NumberFormat('en-US').format(m.value)}`
+            : new Intl.NumberFormat('en-US').format(m.value)
+        )
+      : m.value}
+            </div>
             {m.diff !== undefined && (
               <div className={`text-sm mt-2 ${m.diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {m.diff >= 0 ? '+' : ''}{m.diff}% vs previous

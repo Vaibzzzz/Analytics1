@@ -36,7 +36,7 @@ def get_demo_kpi_data(
             "value": int(country_count)
         })
 
-        # ─── Metric: Unique US states/provinces ──────────────────────────
+        # ─── Metric: Unique US/UK states/provinces ───────────────────────
         state_count = fetch_one(
             conn,
             """
@@ -44,6 +44,7 @@ def get_demo_kpi_data(
               FROM live_transactions t
              WHERE t.merchant_id = :m_id
                AND t.created_at::date BETWEEN :s AND :e
+               AND t.state_or_province IS NOT NULL
             """,
             {"m_id": MERCHANT_ID, "s": start, "e": end}
         )
@@ -115,29 +116,32 @@ def get_demo_kpi_data(
             ]
         })
 
-        # ─── Chart 4: Transactions by US State ──────────────────────────
-        map_rows = conn.execute(text("""
-            SELECT
-              t.state_or_province,
-              COUNT(*) AS txn_count
-            FROM live_transactions t
-           WHERE t.merchant_id = :m_id
-             AND t.created_at::date BETWEEN :s AND :e
-             AND t.country_code = 'US'
-           GROUP BY t.state_or_province
-           ORDER BY txn_count DESC
-        """), {"m_id": MERCHANT_ID, "s": start, "e": end}).mappings().all()
+        # ─── Chart 4: Transactions by State or Province (USA & UK) ──────
+        for country_code, region_label in [('US', 'USA'), ('GB', 'UK')]:
+            map_rows = conn.execute(text("""
+                SELECT
+                  t.state_or_province,
+                  COUNT(*) AS txn_count
+                FROM live_transactions t
+               WHERE t.merchant_id = :m_id
+                 AND t.created_at::date BETWEEN :s AND :e
+                 AND t.country_code = :c
+                 AND t.state_or_province IS NOT NULL
+               GROUP BY t.state_or_province
+               ORDER BY txn_count DESC
+            """), {"m_id": MERCHANT_ID, "s": start, "e": end, "c": country_code}).mappings().all()
 
-        charts.append({
-            "title": "Transactions by State or Province",
-            "type":  "horizontal_bar",
-            "x":     [r["txn_count"]           for r in map_rows],
-            "y":     [r["state_or_province"]   for r in map_rows],
-            "series": [{
-                "name": "Transactions",
-                "data": [r["txn_count"] for r in map_rows]
-            }]
-        })
+            if map_rows:
+                charts.append({
+                    "title": "Transactions by State or Province",
+                    "type":  "horizontal_bar",
+                    "region": region_label,  # Used by frontend to select geo map
+                    "y":     [r["state_or_province"] for r in map_rows],
+                    "series": [{
+                        "name": "Transactions",
+                        "data": [r["txn_count"] for r in map_rows]
+                    }]
+                })
 
     return {
         "metrics": metrics,

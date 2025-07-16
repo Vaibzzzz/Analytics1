@@ -12,6 +12,7 @@ def get_financial_performance_data(filter_type: str = 'YTD',
     Returns financial KPI metrics and chart data (live_transactions) based on the selected date range filter.
     """
     start, end, comp_start, comp_end = get_date_ranges(filter_type, custom)
+    print(f"Financial Performance Data: {start} to {end}, Comparison: {comp_start} to {comp_end}")
     metrics, charts = [], []
 
     with engine.connect() as conn:

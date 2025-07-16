@@ -2,20 +2,19 @@ import React, { useEffect, useState, useRef } from 'react'
 import axios from 'axios'
 import ReactECharts from 'echarts-for-react'
 import * as echarts from 'echarts'
-import usaJson from '../usa.json'
+import usaJson from '../usa.json' 
 
 const filterOptions = [
   'YTD', 'MTD', 'Monthly', 'Weekly', 'Daily', 'Yesterday', 'Today', 'custom'
 ]
 
 export default function Demographic() {
-  // Initialize from localStorage
-  const [metrics, setMetrics] = useState([])
-  const [charts, setCharts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState(() => localStorage.getItem('demographic_filter') || 'YTD')
-  const [customStart, setCustomStart] = useState(() => localStorage.getItem('demographic_start') || '')
-  const [customEnd, setCustomEnd] = useState(() => localStorage.getItem('demographic_end') || '')
+  const [metrics, setMetrics]         = useState([])
+  const [charts, setCharts]           = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [filter, setFilter]           = useState('YTD')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd]     = useState('')
 
   useEffect(() => {
     fetchDemographicData()
@@ -27,9 +26,12 @@ export default function Demographic() {
       const params = { filter_type: filter }
       if (filter === 'custom' && customStart && customEnd) {
         params.start = customStart
-        params.end = customEnd
+        params.end   = customEnd
       }
-      const res = await axios.get('http://localhost:8001/api/demographic', { params })
+      const res = await axios.get(
+        'http://localhost:8001/api/demographic',
+        { params }
+      )
       setMetrics(res.data.metrics || [])
       setCharts(res.data.charts || [])
     } catch (err) {
@@ -39,6 +41,7 @@ export default function Demographic() {
     }
   }
 
+  // ─── Bar chart for simple category/value ─────────────────────────
   const buildBarOption = (chart) => ({
     title: {
       text: chart.title,
@@ -65,7 +68,7 @@ export default function Demographic() {
       type: 'bar',
       itemStyle: {
         color: '#3B82F6',
-        borderRadius: [5, 5, 0, 0]
+        borderRadius: [5,5,0,0]
       },
       label: {
         show: true,
@@ -76,6 +79,7 @@ export default function Demographic() {
     backgroundColor: '#111827'
   })
 
+  // ─── Horizontal bar for series (e.g. multi-series) ────────────
   const buildHorizontalBarOption = (chart) => ({
     title: {
       text: chart.title,
@@ -83,7 +87,9 @@ export default function Demographic() {
       textStyle: { color: '#fff' }
     },
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 100, right: 30, top: 60, bottom: 40 },
+    grid: {
+      left: 100, right: 30, top: 60, bottom: 40
+    },
     xAxis: {
       type: 'value',
       axisLine: { lineStyle: { color: '#888' } },
@@ -100,7 +106,7 @@ export default function Demographic() {
       type: 'bar',
       data: s.data,
       itemStyle: {
-        borderRadius: [0, 5, 5, 0],
+        borderRadius: [0,5,5,0],
         color: '#3B82F6'
       },
       label: {
@@ -112,6 +118,7 @@ export default function Demographic() {
     backgroundColor: '#111827'
   })
 
+  // ─── Pie chart for distribution ─────────────────────────────────
   const buildPieOption = (chart) => ({
     title: {
       text: chart.title,
@@ -130,7 +137,7 @@ export default function Demographic() {
     series: [{
       name: chart.title,
       type: 'pie',
-      radius: ['40%', '70%'],
+      radius: ['40%','70%'],
       label: { show: true, formatter: '{b}: {d}%' },
       emphasis: {
         itemStyle: {
@@ -148,22 +155,12 @@ export default function Demographic() {
 
   return (
     <div className="p-8 space-y-6">
-      {/* Filter Controls */}
+      {/* 1) Time Filter Controls */}
       <div className="flex items-center space-x-4 mb-4">
         <select
           className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded"
           value={filter}
-          onChange={e => {
-            const val = e.target.value
-            setFilter(val)
-            localStorage.setItem('demographic_filter', val)
-            if (val !== 'custom') {
-              setCustomStart('')
-              setCustomEnd('')
-              localStorage.removeItem('demographic_start')
-              localStorage.removeItem('demographic_end')
-            }
-          }}
+          onChange={e => setFilter(e.target.value)}
         >
           {filterOptions.map(opt => (
             <option key={opt} value={opt}>{opt}</option>
@@ -175,28 +172,22 @@ export default function Demographic() {
               type="date"
               className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded"
               value={customStart}
-              onChange={(e) => {
-                setCustomStart(e.target.value)
-                localStorage.setItem('demographic_start', e.target.value)
-              }}
+              onChange={e => setCustomStart(e.target.value)}
             />
             <span className="text-white">to</span>
             <input
               type="date"
               className="bg-[#1f2937] text-white border border-gray-600 px-3 py-2 rounded"
               value={customEnd}
-              onChange={(e) => {
-                setCustomEnd(e.target.value)
-                localStorage.setItem('demographic_end', e.target.value)
-              }}
+              onChange={e => setCustomEnd(e.target.value)}
             />
           </>
         )}
       </div>
 
-      {/* Metrics */}
+      {/* 2) Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        {metrics.map((m, i) => (
+        {metrics.map((m,i) => (
           <div
             key={i}
             className="bg-[#111827] p-6 rounded-lg flex flex-col justify-center"
@@ -207,9 +198,9 @@ export default function Demographic() {
         ))}
       </div>
 
-      {/* Charts */}
+      {/* 3) Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {charts.map((chart, i) => (
+        {charts.map((chart,i) => (
           <div key={i} className="bg-[#111827] p-4 rounded-lg">
             {chart.type === 'bar' && (
               <ReactECharts option={buildBarOption(chart)} style={{ height: 400 }} />
@@ -236,6 +227,8 @@ export default function Demographic() {
   )
 }
 
+// ────────────────────────────────────────────────────────────────
+// Inline Map + Bar Toggle for "Transactions by State or Province"
 function MapToggleChart({ title, data }) {
   const chartRef = useRef(null)
   const [option, setOption] = useState({})
@@ -248,10 +241,7 @@ function MapToggleChart({ title, data }) {
       'Puerto Rico': { left: -76, top: 26, width: 2 }
     })
 
-    const formatted = data.map(d => ({
-      name: stateNameMap[d.name] || d.name,
-      value: d.value
-    }))
+    const formatted = data.map(d => ({ name: stateNameMap[d.name] || d.name, value: d.value }))
 
     const mapOption = {
       title: { text: title, left: 'center', textStyle: { color: '#fff' } },
@@ -260,8 +250,8 @@ function MapToggleChart({ title, data }) {
         left: 'right',
         min: 0,
         max: Math.max(...formatted.map(d => d.value)),
-        inRange: { color: ['#e0f3f8', '#74add1', '#4575b4'] },
-        text: ['High', 'Low'],
+        inRange: { color: ['#e0f3f8','#74add1','#4575b4'] },
+        text: ['High','Low'],
         calculable: true,
         textStyle: { color: '#fff' }
       },
@@ -307,10 +297,11 @@ function MapToggleChart({ title, data }) {
   return <ReactECharts ref={chartRef} option={option} style={{ height: '600px' }} />
 }
 
+// Optional state abbreviation → full name map
 const stateNameMap = {
-  NJ: 'New Jersey', NH: 'New Hampshire', WI: 'Wisconsin', FL: 'Florida',
-  OK: 'Oklahoma', UT: 'Utah', IA: 'Iowa', IL: 'Illinois', ND: 'North Dakota',
-  MP: 'Northern Mariana Islands', MH: 'Marshall Islands', HI: 'Hawaii',
-  PW: 'Palau', VI: 'Virgin Islands', CT: 'Connecticut', AZ: 'Arizona',
-  GA: 'Georgia', NE: 'Nebraska', MO: 'Missouri', NV: 'Nevada'
+  NJ:'New Jersey', NH:'New Hampshire', WI:'Wisconsin', FL:'Florida',
+  OK:'Oklahoma', UT:'Utah', IA:'Iowa', IL:'Illinois', ND:'North Dakota',
+  MP:'Northern Mariana Islands', MH:'Marshall Islands', HI:'Hawaii',
+  PW:'Palau', VI:'Virgin Islands', CT:'Connecticut', AZ:'Arizona',
+  GA:'Georgia', NE:'Nebraska', MO:'Missouri', NV:'Nevada'
 }
