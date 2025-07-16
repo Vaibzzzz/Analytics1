@@ -10,13 +10,16 @@ def get_date_ranges(filter_type: str, custom: Optional[tuple[date, date]]) -> tu
     returns (start, end, comp_start, comp_end) date windows
     for current vs. comparison periods.
     """
-    base = datetime.now()
-    today_date = base.date()
+    #get current date and time
+    today_date = datetime.now().date()
 
     if filter_type == 'Today':
-        start = end = today_date
-        comp_start = comp_end = today_date - timedelta(days=1)
-
+        tdhms = datetime.now()
+        start = end = tdhms
+        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        comp_start = comp_end = tdhms - timedelta(days=1)
+        comp_start = comp_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        
     elif filter_type == 'Yesterday':
         start = end = today_date - timedelta(days=1)
         comp_start = comp_end = today_date - timedelta(days=2)
