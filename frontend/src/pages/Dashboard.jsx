@@ -9,6 +9,8 @@ export default function Dashboard() {
     return cached ? JSON.parse(cached) : { metrics: [], charts: [] };
   });
   const [loading, setLoading] = useState(true);
+  const [insights, setInsights] = useState({});
+  const [loadingInsights, setLoadingInsights] = useState({});
 
   useEffect(() => {
     axios.get('http://localhost:8001/api/dashboard')
@@ -23,7 +25,20 @@ export default function Dashboard() {
       });
   }, []);
 
-  const { metrics, charts } = data;
+  const fetchInsight = async (chartTitle) => {
+    setLoadingInsights(prev => ({ ...prev, [chartTitle]: true }));
+    try {
+      const res = await axios.get('http://localhost:8001/api/dashboard/insights', {
+        params: { chart_id: chartTitle }
+      });
+      setInsights(prev => ({ ...prev, [chartTitle]: res.data.insight }));
+    } catch (err) {
+      console.error(err);
+      setInsights(prev => ({ ...prev, [chartTitle]: 'Failed to generate insight.' }));
+    } finally {
+      setLoadingInsights(prev => ({ ...prev, [chartTitle]: false }));
+    }
+  };
 
   const buildPieOption = (chart) => ({
     title: {
@@ -36,7 +51,7 @@ export default function Dashboard() {
       orient: 'horizontal',
       bottom: 10,
       textStyle: { color: '#fff' },
-      data: chart.data.map(d => d.name)
+      data: chart.data?.map(d => d.name) || []
     },
     series: [{
       type: 'pie',
@@ -54,7 +69,7 @@ export default function Dashboard() {
           shadowColor: 'rgba(0, 0, 0, 0.5)'
         }
       },
-      data: chart.data.map(d => ({ name: d.name, value: d.value }))
+      data: chart.data?.map(d => ({ name: d.name, value: d.value })) || []
     }],
     backgroundColor: '#111827'
   });
@@ -68,7 +83,7 @@ export default function Dashboard() {
     tooltip: {},
     xAxis: {
       type: 'category',
-      data: chart.x,
+      data: chart.x || [],
       axisLabel: { color: '#bbb', rotate: 20 }
     },
     yAxis: {
@@ -76,7 +91,7 @@ export default function Dashboard() {
       axisLabel: { color: '#bbb' }
     },
     series: [{
-      data: chart.y,
+      data: chart.y || [],
       type: 'bar',
       itemStyle: { color: '#00aaff' },
       barWidth: '50%'
@@ -88,9 +103,11 @@ export default function Dashboard() {
     return <div className="text-white p-8">Loading…</div>;
   }
 
+  const { metrics, charts } = data;
+
   return (
     <div className="p-8 space-y-6">
-      {/* 1) Unified Metrics Row */}
+      {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
         {metrics.map((m, i) => {
           const showDollar = ['Total Transaction Volume', 'Average Transaction Value'].includes(m.title);
@@ -109,12 +126,9 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* 2) Section Navigation Cards */}
+      {/* Navigation Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <NavLink
-          to="/financial-analysis"
-          className="border border-green-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-green-50/10 transition"
-        >
+        <NavLink to="/financial-analysis" className="border border-green-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-green-50/10 transition">
           <span className="text-green-500 text-2xl">💰</span>
           <div>
             <div className="font-semibold">Financial Analysis</div>
@@ -122,10 +136,7 @@ export default function Dashboard() {
           </div>
         </NavLink>
 
-        <NavLink
-          to="/risk-assessment"
-          className="border border-red-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-red-50/10 transition"
-        >
+        <NavLink to="/risk-assessment" className="border border-red-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-red-50/10 transition">
           <span className="text-red-500 text-2xl">⚠️</span>
           <div>
             <div className="font-semibold">Risk Assessment</div>
@@ -133,10 +144,7 @@ export default function Dashboard() {
           </div>
         </NavLink>
 
-        <NavLink
-          to="/operational-efficiency"
-          className="border border-blue-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-blue-50/10 transition"
-        >
+        <NavLink to="/operational-efficiency" className="border border-blue-500 text-white p-6 rounded-lg flex items-center space-x-4 hover:bg-blue-50/10 transition">
           <span className="text-blue-500 text-2xl">📈</span>
           <div>
             <div className="font-semibold">Operational Efficiency</div>
@@ -145,40 +153,28 @@ export default function Dashboard() {
         </NavLink>
       </div>
 
-      {/* 3) Chart Display */}
+      {/* Charts with AI Buttons and Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {charts.map((c, idx) => (
-          <div key={idx} className="bg-[#111827] p-4 rounded-lg">
-            {c.type === 'pie' && (
-              <ReactECharts
-                option={buildPieOption(c)}
-                style={{ height: '350px', width: '100%' }}
-              />
-            )}
-            {c.type === 'bar' && (
-              <ReactECharts
-                option={buildBarOption(c)}
-                style={{ height: '350px', width: '100%' }}
-              />
-            )}
-            {c.type === 'list' && (
-              <ul className="space-y-2 max-h-56 overflow-auto mt-2">
-                {c.data.map((item, i) =>
-                  typeof item === 'string' ? (
-                    <li key={i} className="text-gray-200">{item}</li>
-                  ) : (
-                    <li key={i} className="flex justify-between items-center text-gray-200">
-                      <span className="bg-[#00aaff] text-[#001f3f] px-2 py-1 rounded text-xs mr-2">
-                        {item.type}
-                      </span>
-                      <span className="flex-1">{item.message}</span>
-                      <span className="text-gray-500 text-xs ml-2">
-                        {new Date(item.time).toLocaleTimeString()}
-                      </span>
-                    </li>
-                  )
-                )}
-              </ul>
+        {charts.map((chart, i) => (
+          <div key={i} className="bg-[#111827] p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm text-gray-400">{chart.title}</div>
+              <button
+                onClick={() => fetchInsight(chart.title)}
+                className="text-xs bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white disabled:opacity-50"
+                disabled={loadingInsights[chart.title]}
+              >
+                {loadingInsights[chart.title] ? 'Thinking…' : '✨ AI Insight'}
+              </button>
+            </div>
+
+            {chart.type === 'bar' && <ReactECharts option={buildBarOption(chart)} style={{ height: 350 }} />}
+            {chart.type === 'pie' && <ReactECharts option={buildPieOption(chart)} style={{ height: 350 }} />}
+
+            {insights[chart.title] && (
+              <div className="mt-4 text-sm text-blue-200 border-t border-gray-700 pt-2">
+                {insights[chart.title]}
+              </div>
             )}
           </div>
         ))}

@@ -16,7 +16,7 @@ import Customer_Insight from './pages/CustomerInsights';
 import Reports from './pages/Reports';
 
 export default function App() {
-  const [points, setPoints] = useState(1); // Global AI usage points
+  const [points, setPoints] = useState(50); // Global AI usage points
 
   return (
     <div className="flex h-screen">

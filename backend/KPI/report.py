@@ -50,7 +50,7 @@ def get_gateway_fee_analysis(filter_type: str = 'YTD',
             SELECT created_at::date AS day,
                    SUM(gateway_fee)::float AS total_fee
               FROM live_transactions
-             WHERE created_at::date BETWEEN CURRENT_DATE - INTERVAL '7 days' AND CURRENT_DATE - INTERVAL '1 day'
+             WHERE created_at::date BETWEEN CURRENT_DATE - INTERVAL '8 days' AND CURRENT_DATE - INTERVAL '1 day'
              GROUP BY created_at::date
              ORDER BY day
         """)).mappings().all()
