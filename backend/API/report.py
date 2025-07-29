@@ -92,9 +92,10 @@ def gateway_fee_insight(
     try:
         # Assuming the LLM client supports returning usage
         response = generate_grok_insight(prompt, return_usage=True)
-        insight = response['text']
-        output_tokens = response['usage']['completion_tokens']
-        total_tokens = response['usage']['total_tokens']
+        # If response is a list or tuple, use index access; adjust as needed based on actual response structure
+        insight = response[0]
+        output_tokens = response[1]['completion_tokens'] if isinstance(response[1], dict) and 'completion_tokens' in response[1] else None
+        total_tokens = response[1]['total_tokens'] if isinstance(response[1], dict) and 'total_tokens' in response[1] else None
     except Exception as e:
         insight = f"Insight generation failed: {str(e)}"
         output_tokens = None

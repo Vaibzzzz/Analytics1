@@ -62,7 +62,7 @@ def compare_to_historical_single_point(yesterday_val: float, historical_values: 
 
     return {
         "z_score": round(z, 2),
-        "p_value": round(p, 4),
+        "p_value": round(float(p), 4),
         "mean": round(mean, 2),
         "std": round(std, 2),
         "is_significant": is_outlier,
