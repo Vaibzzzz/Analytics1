@@ -164,7 +164,7 @@ export default function Dashboard() {
                 className="text-xs bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white disabled:opacity-50"
                 disabled={loadingInsights[chart.title]}
               >
-                {loadingInsights[chart.title] ? 'Thinking…' : '✨ AI Insight'}
+                {loadingInsights[chart.title] ? 'Thinking…' : '✨ Pi AI'}
               </button>
             </div>
 

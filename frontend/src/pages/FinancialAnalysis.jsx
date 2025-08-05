@@ -3,15 +3,26 @@ import axios from 'axios';
 import ReactECharts from 'echarts-for-react';
 
 const FILTER_OPTIONS = ['YTD', 'MTD', 'Weekly', 'Daily', 'Monthly', 'Yesterday', 'Today', 'custom'];
+const CHART_TYPES = [
+  { value: 'pie', label: 'Pie Chart' },
+  { value: 'horizontal_bar', label: 'Horizontal Bar' },
+  { value: 'vertical_bar', label: 'Vertical Bar' },
+  { value: 'line', label: 'Line Chart' },
+  { value: 'area', label: 'Area Chart' },
+  { value: 'donut', label: 'Donut Chart' }
+];
 
 export default function FinancialAnalysis({ points, setPoints }) {
   const [data, setData] = useState({ metrics: [], charts: [] });
   const [loading, setLoading] = useState(true);
   const [loadingInsight, setLoadingInsight] = useState({});
   const [insights, setInsights] = useState({});
-  const [filter, setFilter] = useState(() => localStorage.getItem('financial_filter') || 'YTD');
-  const [start, setStart] = useState(() => localStorage.getItem('financial_start') || '');
-  const [end, setEnd] = useState(() => localStorage.getItem('financial_end') || '');
+  const [filter, setFilter] = useState(() => localStorage?.getItem('financial_filter') || 'YTD');
+  const [start, setStart] = useState(() => localStorage?.getItem('financial_start') || '');
+  const [end, setEnd] = useState(() => localStorage?.getItem('financial_end') || '');
+  
+  // State to track selected chart type for each chart
+  const [chartTypes, setChartTypes] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -28,6 +39,13 @@ export default function FinancialAnalysis({ points, setPoints }) {
       }
       const res = await axios.get('http://localhost:8001/api/financial-performance', { params });
       setData(res.data);
+      
+      // Initialize chart types with default values from API
+      const initialChartTypes = {};
+      res.data.charts.forEach(chart => {
+        initialChartTypes[chart.title] = chart.type;
+      });
+      setChartTypes(initialChartTypes);
     } catch (err) {
       console.error('Error fetching financial analysis data:', err);
     } finally {
@@ -67,23 +85,38 @@ export default function FinancialAnalysis({ points, setPoints }) {
 
   const handleFilterChange = (value) => {
     setFilter(value);
-    localStorage.setItem('financial_filter', value);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('financial_filter', value);
+    }
     if (value !== 'custom') {
       setStart('');
       setEnd('');
-      localStorage.removeItem('financial_start');
-      localStorage.removeItem('financial_end');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('financial_start');
+        localStorage.removeItem('financial_end');
+      }
     }
   };
 
   const handleStartChange = (value) => {
     setStart(value);
-    localStorage.setItem('financial_start', value);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('financial_start', value);
+    }
   };
 
   const handleEndChange = (value) => {
     setEnd(value);
-    localStorage.setItem('financial_end', value);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('financial_end', value);
+    }
+  };
+
+  const handleChartTypeChange = (chartTitle, newType) => {
+    setChartTypes(prev => ({
+      ...prev,
+      [chartTitle]: newType
+    }));
   };
 
   const buildPieOption = (chart) => ({
@@ -92,7 +125,7 @@ export default function FinancialAnalysis({ points, setPoints }) {
     legend: {
       bottom: 10,
       textStyle: { color: '#fff' },
-      data: chart.data.map(d => d.name)
+      data: chart.data?.map(d => d.name) || chart.y || []
     },
     series: [{
       name: chart.title,
@@ -110,7 +143,48 @@ export default function FinancialAnalysis({ points, setPoints }) {
           shadowColor: 'rgba(0, 0, 0, 0.5)'
         }
       },
-      data: chart.data.map(d => ({ name: d.name, value: d.value }))
+      data: chart.data ? 
+        chart.data.map(d => ({ name: d.name, value: d.value })) :
+        chart.y?.map((name, idx) => ({ 
+          name, 
+          value: chart.series?.[0]?.data?.[idx] || 0 
+        })) || []
+    }],
+    backgroundColor: '#111827'
+  });
+
+  const buildDonutOption = (chart) => ({
+    title: { text: chart.title, left: 'center', textStyle: { color: '#fff' } },
+    tooltip: { trigger: 'item', formatter: '{b}: {d}%' },
+    legend: {
+      bottom: 10,
+      textStyle: { color: '#fff' },
+      data: chart.data?.map(d => d.name) || chart.y || []
+    },
+    series: [{
+      name: chart.title,
+      type: 'pie',
+      radius: ['50%', '80%'],
+      label: {
+        show: true,
+        position: 'center'
+      },
+      emphasis: {
+        label: {
+          show: true,
+          fontSize: '30',
+          fontWeight: 'bold'
+        }
+      },
+      labelLine: {
+        show: false
+      },
+      data: chart.data ? 
+        chart.data.map(d => ({ name: d.name, value: d.value })) :
+        chart.y?.map((name, idx) => ({ 
+          name, 
+          value: chart.series?.[0]?.data?.[idx] || 0 
+        })) || []
     }],
     backgroundColor: '#111827'
   });
@@ -124,10 +198,10 @@ export default function FinancialAnalysis({ points, setPoints }) {
     },
     yAxis: {
       type: 'category',
-      data: chart.y,
+      data: chart.y || chart.data?.map(d => d.name) || [],
       axisLabel: { color: '#fff' }
     },
-    series: chart.series.map(series => ({
+    series: chart.series ? chart.series.map(series => ({
       name: series.name,
       data: series.data,
       type: 'bar',
@@ -138,9 +212,20 @@ export default function FinancialAnalysis({ points, setPoints }) {
         position: 'right',
         color: '#fff'
       }
-    })),
+    })) : [{
+      name: chart.title,
+      data: chart.data?.map(d => d.value) || [],
+      type: 'bar',
+      barWidth: '60%',
+      itemStyle: { color: '#3b82f6' },
+      label: {
+        show: true,
+        position: 'right',
+        color: '#fff'
+      }
+    }],
     legend: {
-      show: chart.series.length > 1,
+      show: chart.series ? chart.series.length > 1 : false,
       textStyle: { color: '#fff' }
     },
     grid: {
@@ -151,6 +236,155 @@ export default function FinancialAnalysis({ points, setPoints }) {
     },
     backgroundColor: '#111827'
   });
+
+  const buildVerticalBarOption = (chart) => ({
+    title: { text: chart.title, left: 'center', textStyle: { color: '#fff' } },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    xAxis: {
+      type: 'category',
+      data: chart.y || chart.data?.map(d => d.name) || [],
+      axisLabel: { color: '#fff', rotate: 45 }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#fff' }
+    },
+    series: chart.series ? chart.series.map(series => ({
+      name: series.name,
+      data: series.data,
+      type: 'bar',
+      barWidth: '60%',
+      itemStyle: { color: '#3b82f6' },
+      label: {
+        show: true,
+        position: 'top',
+        color: '#fff'
+      }
+    })) : [{
+      name: chart.title,
+      data: chart.data?.map(d => d.value) || [],
+      type: 'bar',
+      barWidth: '60%',
+      itemStyle: { color: '#3b82f6' },
+      label: {
+        show: true,
+        position: 'top',
+        color: '#fff'
+      }
+    }],
+    legend: {
+      show: chart.series ? chart.series.length > 1 : false,
+      textStyle: { color: '#fff' }
+    },
+    grid: {
+      left: '10%',
+      right: '5%',
+      bottom: '15%',
+      containLabel: true
+    },
+    backgroundColor: '#111827'
+  });
+
+  const buildLineOption = (chart) => ({
+    title: { text: chart.title, left: 'center', textStyle: { color: '#fff' } },
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+      type: 'category',
+      data: chart.y || chart.data?.map(d => d.name) || [],
+      axisLabel: { color: '#fff' }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#fff' }
+    },
+    series: chart.series ? chart.series.map((series, idx) => ({
+      name: series.name,
+      data: series.data,
+      type: 'line',
+      smooth: true,
+      itemStyle: { color: idx === 0 ? '#3b82f6' : '#10b981' },
+      lineStyle: { color: idx === 0 ? '#3b82f6' : '#10b981' }
+    })) : [{
+      name: chart.title,
+      data: chart.data?.map(d => d.value) || [],
+      type: 'line',
+      smooth: true,
+      itemStyle: { color: '#3b82f6' },
+      lineStyle: { color: '#3b82f6' }
+    }],
+    legend: {
+      show: chart.series ? chart.series.length > 1 : false,
+      textStyle: { color: '#fff' }
+    },
+    grid: {
+      left: '10%',
+      right: '5%',
+      bottom: '10%',
+      containLabel: true
+    },
+    backgroundColor: '#111827'
+  });
+
+  const buildAreaOption = (chart) => ({
+    title: { text: chart.title, left: 'center', textStyle: { color: '#fff' } },
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+      type: 'category',
+      data: chart.y || chart.data?.map(d => d.name) || [],
+      axisLabel: { color: '#fff' }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#fff' }
+    },
+    series: chart.series ? chart.series.map((series, idx) => ({
+      name: series.name,
+      data: series.data,
+      type: 'line',
+      smooth: true,
+      areaStyle: { opacity: 0.6 },
+      itemStyle: { color: idx === 0 ? '#3b82f6' : '#10b981' },
+      lineStyle: { color: idx === 0 ? '#3b82f6' : '#10b981' }
+    })) : [{
+      name: chart.title,
+      data: chart.data?.map(d => d.value) || [],
+      type: 'line',
+      smooth: true,
+      areaStyle: { opacity: 0.6 },
+      itemStyle: { color: '#3b82f6' },
+      lineStyle: { color: '#3b82f6' }
+    }],
+    legend: {
+      show: chart.series ? chart.series.length > 1 : false,
+      textStyle: { color: '#fff' }
+    },
+    grid: {
+      left: '10%',
+      right: '5%',
+      bottom: '10%',
+      containLabel: true
+    },
+    backgroundColor: '#111827'
+  });
+
+  const getChartOption = (chart, selectedType) => {
+    switch (selectedType) {
+      case 'pie':
+        return buildPieOption(chart);
+      case 'donut':
+        return buildDonutOption(chart);
+      case 'horizontal_bar':
+        return buildHorizontalBarOption(chart);
+      case 'vertical_bar':
+        return buildVerticalBarOption(chart);
+      case 'line':
+        return buildLineOption(chart);
+      case 'area':
+        return buildAreaOption(chart);
+      default:
+        return buildPieOption(chart);
+    }
+  };
 
   if (loading) return <div className="text-white p-8">Loading…</div>;
 
@@ -217,23 +451,44 @@ export default function FinancialAnalysis({ points, setPoints }) {
         ))}
       </div>
 
-      {/* Charts with AI Buttons and Insights */}
+      {/* Charts with AI Buttons, Chart Type Selector and Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {data.charts.map((chart, i) => (
           <div key={i} className="bg-[#111827] p-4 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-4">
               <div className="text-sm text-gray-400">{chart.title}</div>
-              <button
-                onClick={() => fetchInsight(chart.title)}
-                className="text-xs bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white disabled:opacity-50"
-              >
-                {loadingInsight[chart.title] ? 'Thinking…' : '✨ AI Insight'}
-              </button>
+              <div className="flex items-center space-x-2">
+                {/* Chart Type Selector */}
+                <select
+                  value={chartTypes[chart.title] || chart.type}
+                  onChange={(e) => handleChartTypeChange(chart.title, e.target.value)}
+                  className="bg-[#1f2937] text-white border border-gray-600 rounded px-2 py-1 text-xs"
+                >
+                  {CHART_TYPES.map(type => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+                
+                {/* AI Insight Button */}
+                <button
+                  onClick={() => fetchInsight(chart.title)}
+                  className="text-xs bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-white disabled:opacity-50"
+                  disabled={loadingInsight[chart.title]}
+                >
+                  {loadingInsight[chart.title] ? 'Thinking…' : '✨ AI Insight'}
+                </button>
+              </div>
             </div>
 
-            {chart.type === 'pie' && <ReactECharts option={buildPieOption(chart)} style={{ height: 350 }} />}
-            {chart.type === 'horizontal_bar' && <ReactECharts option={buildHorizontalBarOption(chart)} style={{ height: 500 }} />}
+            {/* Dynamic Chart Rendering */}
+            <ReactECharts 
+              option={getChartOption(chart, chartTypes[chart.title] || chart.type)} 
+              style={{ height: 400 }} 
+            />
 
+            {/* AI Insights */}
             {insights[chart.title] && (
               <div className="mt-4 text-sm text-blue-200 border-t border-gray-700 pt-2">
                 {insights[chart.title]}
