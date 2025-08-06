@@ -130,38 +130,6 @@ def fetch_dashboard_data() -> dict:
         methods = [r["method"] for r in chart3_rows]
         counts = [r["cnt"] for r in chart3_rows]
 
-        # Helper function to generate drilldown tab data
-        def build_drilldown(tab_name, group_field):
-            drill_rows = conn.execute(text(f"""
-                SELECT credit_card_type AS method, {group_field} AS group_val, COUNT(*) AS cnt
-                FROM live_transactions
-                GROUP BY credit_card_type, {group_field}
-            """)).mappings().all()
-
-            drill_map = defaultdict(lambda: defaultdict(int))
-            for row in drill_rows:
-                drill_map[row["method"]][row["group_val"]] = row["cnt"]
-
-            drill_x, drill_y = [], []
-            for method in methods:
-                groupings = drill_map.get(method, {})
-                for val, count in groupings.items():
-                    label = f"{method} - {val}"
-                    drill_x.append(label)
-                    drill_y.append(count)
-
-            return {
-                "type": "bar",
-                "x": drill_x,
-                "y": drill_y
-            }
-
-        # Build all drilldown tabs
-        drilldown_tabs = {
-            "funding_source": build_drilldown("funding_source", "funding_source"),
-            "gateway_fee": build_drilldown("gateway_fee", "gateway_fee"),
-            "pricing_ic": build_drilldown("pricing_ic", "pricing_ic")
-        }
 
         # Final chart object
         chart3 = {
@@ -171,8 +139,7 @@ def fetch_dashboard_data() -> dict:
             "y": counts,
             "drilldown": {
                 "level": "lvl_1",
-                "type": "bar",
-                "tabs": drilldown_tabs
+                "type": "bar"
             },
             "extra_metrics": _stat_metrics("COUNT(*)")
         }

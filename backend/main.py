@@ -8,6 +8,7 @@ from API.DemoGraphic import router as demographic_router
 from API.risk_and_fraud_management import router as risk_and_fraud_router
 from API.customer_insight import router as customer_insight_router
 from API.report import router as report_router
+from API.drill import router as drill_router
 
 app = FastAPI(title="A360 Prototype Dashboard API")
 
@@ -28,3 +29,4 @@ app.include_router(demographic_router, prefix="/api")
 app.include_router(risk_and_fraud_router, prefix="/api")
 app.include_router(customer_insight_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
+app.include_router(drill_router, prefix="/api")
