@@ -2,8 +2,8 @@ from fastapi import APIRouter, Query
 from typing import List, Dict, Any
 import tiktoken
 
-from KPI.KPI_Dashboard import fetch_dashboard_data
 from LLM.grok_client import generate_grok_insight
+from KPI.dashboard import fetch_processing_partner, fetch_top5_acquirers,fetch_payment_method_distribution
 
 router = APIRouter()
 
@@ -94,7 +94,7 @@ def get_dashboard_data():
     """
     Returns the raw charts + metrics (including extra_metrics per chart).
     """
-    return fetch_dashboard_data()
+    return fetch_top5_acquirers(),fetch_payment_method_distribution(),fetch_processing_partner()
 
 
 # ────────────────────────────────────────
